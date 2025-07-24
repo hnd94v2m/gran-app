@@ -88,4 +88,36 @@ export default function CricketPage() {
     <main className="p-6 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-2">飛鏢 Cricket 規則</h1>
       <div className="mb-2">
-        <span className={current
+        <span className={current===0 ? 'font-bold underline' : ''}>玩家1</span> &nbsp;VS&nbsp;
+        <span className={current===1 ? 'font-bold underline' : ''}>玩家2</span>
+      </div>
+      <table className="w-full mb-1 border">
+      <thead>
+        <tr>
+          <th>分區</th>
+          {CRICKET_SECTIONS.map(s => (
+            <th key={s}>{SECTION_LABELS[s]}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {players.map((p, idx) => (
+          <tr key={idx}>
+            <td className="border">玩家{idx+1}（{p.score}）</td>
+            {CRICKET_SECTIONS.map(s => (
+              <td className="text-center border" key={s}>
+                {p.opened[s] >= 3 ? "●" : p.opened[s] > 0 ? p.opened[s] : ""}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+      {winner && <div className="font-bold text-green-600">{winner}</div>}
+      <div className="mb-2">{message}</div>
+      <button className="btn px-4 py-2 bg-blue-600 text-white mr-2" onClick={handleConnect}>連接飛鏢靶</button>
+      <button className="btn px-4 py-2 bg-gray-600 text-white mr-2" onClick={nextPlayer}>換玩家</button>
+      <button className="btn px-4 py-2 bg-red-500 text-white" onClick={resetGame}>重設遊戲</button>
+    </main>
+  );
+}
