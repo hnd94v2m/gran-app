@@ -43,11 +43,9 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
   const [lastRoundThrows, setLastRoundThrows] = useState<number[]>([]);
-
-  // 回合分數顯示框專用 ref，方便自動滾動最底
   const historyBox = useRef<HTMLDivElement>(null);
 
-  // 當歷史分數變動就滾動到最底
+  // 自動滾動到底
   useEffect(() => {
     if (historyBox.current) {
       historyBox.current.scrollTop = historyBox.current.scrollHeight;
@@ -69,27 +67,21 @@ export default function Page01() {
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
-      // 新回合第一鏢時清空上一回合暫存分數
       if (currThrows.length === 0 && lastRoundThrows.length > 0) {
         setLastRoundThrows([]);
       }
-
       if (currThrows.length >= 3) return;
-
       setCurrThrows(prev => {
         const newThrows = [...prev, segment.Value];
         setScore(prevScore => prevScore - segment.Value);
-        // 若滿三鏢，自動進入下回合（但等待下回合首鏢才清除顯示 ‒ 交由上面邏輯）
-        if (newThrows.length === 3) {
-          endRoundWithThrows(newThrows);
-        }
+        if (prev.length === 0 && lastRoundThrows.length > 0) setLastRoundThrows([]);
+        if (newThrows.length === 3) endRoundWithThrows(newThrows);
         return newThrows;
       });
     };
     // eslint-disable-next-line
   }, [granboard, currThrows, lastRoundThrows]);
 
-  // 結束本回合並暫存本回合分數
   const endRoundWithThrows = (throwsToAdd: number[]) => {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(prev => [...prev, sum]);
@@ -112,59 +104,36 @@ export default function Page01() {
     setMessage("已重設，請連接飛鏢靶");
   };
 
-  // 當前分數顯示（上一回合如果還沒被新回合覆蓋則顯示上一回合）
   const displayedCurrThrows = lastRoundThrows.length > 0 ? lastRoundThrows : currThrows;
-
-  // 歷史回合分數顯示（全部回合皆顯示），只用於分頁框顯示
-  // 最新7個index
-  const maxShow = 7;
-  const showStart = Math.max(history.length - maxShow, 0);
-  const displayedHistory = history.slice(showStart);
-
-  // 目前最終分數
   const currentTotal = START_SCORE - history.reduce((a, b) => a + b, 0) - displayedCurrThrows.reduce((a, b) => a + b, 0);
 
-  // ===== 畫面結構 =====
   return (
     <div
       className="bg-black text-white w-full min-h-screen flex items-center justify-center"
       style={{
-        aspectRatio: '16 / 9', // 固定16:9
+        aspectRatio: '16/9',
         minHeight: '100vh',
         minWidth: '100vw',
-        //maxWidth: '100vw',  // 保證寬度填滿，content用flex布滿
         overflow: 'hidden',
       }}
     >
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1">
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
-
-          {/* 歷史回合分數顯示框 */}
+          {/* 歷史回合分數框：兩欄表格 */}
           <div className="flex flex-col justify-center items-center w-[330px] min-w-[300px] px-4">
             <div
               ref={historyBox}
-              className="bg-[#151718] rounded-2xl border-2 border-zinc-700 shadow-inner flex flex-col justify-end items-center
-                h-[18rem] max-h-[75vh] w-full overflow-y-scroll custom-scrollbar py-2 transition-all"
+              className="bg-[#141313] rounded-2xl border-2 border-zinc-700 shadow-inner flex flex-col h-[22rem] max-h-[78vh] w-full overflow-y-scroll custom-scrollbar py-4"
             >
-              {/* 兩行表格：第一行R數，第二行分數 */}
-              {/* 上方空間自動頂格，下方靠近 */}
               <div className="w-full">
-                <div className="flex flex-row justify-center items-end w-full">
-                  {displayedHistory.map((_, idx) => (
-                    <div key={idx}
-                      className="flex-1 px-1 text-center text-2xl text-gray-400 font-bold"
-                    >
-                      R{showStart + idx + 1}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-row justify-center items-start w-full mt-3">
-                  {displayedHistory.map((sum, idx) => (
-                    <div key={idx}
-                      className="flex-1 px-1 text-center text-4xl text-yellow-300 font-extrabold"
-                    >
-                      {sum}
-                    </div>
+                <div className="grid grid-cols-2 gap-x-2">
+                  <div className="text-2xl text-gray-400 font-bold border-b border-zinc-700 pb-1 text-center">回合</div>
+                  <div className="text-2xl text-gray-400 font-bold border-b border-zinc-700 pb-1 text-center">分數</div>
+                  {history.map((sum, idx) => (
+                    <>
+                      <div key={`r${idx+1}`} className="text-2xl text-gray-300 font-bold py-1 text-center">R{idx+1}</div>
+                      <div key={`s${idx+1}`} className="text-4xl text-yellow-300 font-extrabold py-1 text-center">{sum}</div>
+                    </>
                   ))}
                 </div>
               </div>
@@ -176,30 +145,21 @@ export default function Page01() {
             <FlipClockScore num={score >= 0 ? score : 0} />
           </div>
 
-          {/* 右側本回合分數和按鈕 */}
+          {/* 本回合分數（上下排列）與按鈕 */}
           <div className="flex flex-col justify-center items-center w-[330px] min-w-[300px] px-4">
-            {/* 本回合分數三鏢（不顯示標題，依照目前狀態高亮未丟鏢 */}
-            <div className="flex flex-row justify-center items-end mb-8 w-full">
+            <div className="flex flex-col items-center justify-center mb-8 w-full">
               {[0, 1, 2].map(i => {
-                // 決定高亮，還沒丟的第一鏢（目前準備要丟的）為高亮，其餘普通
-                let highlight = false;
-                if (
-                  (displayedCurrThrows[i] === undefined)
-                  && (i === displayedCurrThrows.findIndex(v => v === undefined) || (displayedCurrThrows.filter(v => v === undefined).length === 3 && i===0))
-                ) {
-                  highlight = true;
-                } else if (displayedCurrThrows[i] === undefined && displayedCurrThrows.slice(0, i).length === displayedCurrThrows.length) {
-                  highlight = true; //全未丟第一鏢高亮
-                }
-
+                // 準備丟的那一鏢：找到首個undefined
+                const highlight = displayedCurrThrows[i] === undefined &&
+                  displayedCurrThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div
                     key={i}
-                    className={`mx-2 flex flex-col items-center`}
+                    className={`my-2 flex flex-col items-center w-full`}
                   >
                     <div
                       className={`
-                        w-20 h-24 flex items-center justify-center rounded-2xl border-2 
+                        w-28 h-24 flex items-center justify-center rounded-2xl border-2 
                         text-4xl font-extrabold
                         ${
                           displayedCurrThrows[i] !== undefined
@@ -251,7 +211,6 @@ export default function Page01() {
           </span>
         </div>
 
-        {/* 金屬質感等自定樣式 */}
         <style jsx>{`
           .text-gradient-metal {
             background: linear-gradient(135deg, #f7f7f7, #a9a9a9 20%, #fff 50%, #c9ac36 70%, #8a6d1b 85%, #f7f7f7 95%);
