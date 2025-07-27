@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';  // 這行一定要加，解決React未定義錯誤
 import { useEffect, useState, useRef } from "react";
 import { Granboard } from "@/services/granboard";
 import { Segment } from "@/services/boardinfo";
@@ -78,6 +79,7 @@ export default function Page01() {
         return newThrows;
       });
     };
+    // eslint-disable-next-line
   }, [granboard, currThrows, lastRoundThrows]);
 
   const endRoundWithThrows = (throwsToAdd: number[]) => {
@@ -105,16 +107,13 @@ export default function Page01() {
   const displayedCurrThrows = lastRoundThrows.length > 0 ? lastRoundThrows : currThrows;
   const currentTotal = START_SCORE - history.reduce((a, b) => a + b, 0) - displayedCurrThrows.reduce((a, b) => a + b, 0);
 
-  // 計算歷史回合每格背景色，從最舊灰到最新白
+  // 計算歷史回合每格背景色，從舊到新由暗至淺灰
   function bgColorByIndex(index: number, length: number): string {
     if (length === 1) return '#f8f8f8';
-    // 線性從暗灰（32）到亮灰（248）
     const minGray = 32;
     const maxGray = 248;
-    const ratio = index / (length - 1); // 0 = 最舊, 1 = 最新
-    // 顏色用反比，最新最白（maxGray）
+    const ratio = index / (length - 1);
     const grayValue = Math.round(minGray + (maxGray - minGray) * ratio);
-    // 灰階色碼
     return `rgb(${grayValue},${grayValue},${grayValue})`;
   }
 
@@ -131,7 +130,7 @@ export default function Page01() {
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1">
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
 
-          {/* 歷史回合分數框：獨立區塊，兩欄表格無標題 */}
+          {/* 歷史回合分數區塊，無外框，兩欄表格無標題 */}
           <div className="flex flex-col justify-center items-center w-[330px] min-w-[300px] px-4">
             <div
               ref={historyBox}
