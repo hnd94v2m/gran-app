@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';  // 這行一定要加，解決React未定義錯誤
+import React from 'react';  // 這行必須加！解決 React 未定義錯誤
 import { useEffect, useState, useRef } from "react";
 import { Granboard } from "@/services/granboard";
 import { Segment } from "@/services/boardinfo";
