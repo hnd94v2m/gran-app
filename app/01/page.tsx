@@ -5,17 +5,46 @@ import { Segment } from "@/services/boardinfo";
 
 const START_SCORE = 501;
 
+// Flip Clock 元件
+function FlipClockNumber({ value }: { value: string }) {
+  return (
+    <div className="relative flex items-center justify-center w-32 h-48 bg-zinc-900 rounded-xl mx-2 shadow-[0_8px_24px_rgba(0,0,0,0.6)] border-[3px] border-zinc-700 overflow-hidden">
+      {/* 翻頁分割線 */}
+      <div className="absolute left-2 right-2 top-1/2 h-0.5 bg-zinc-700/80 z-10" />
+      {/* 數字（帶金屬質感） */}
+      <span className="font-mono text-[8rem] font-extrabold select-none tracking-wider text-gradient-metal z-20"
+        style={{ letterSpacing: '0.08em' }}
+      >
+        {value}
+      </span>
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-8 bg-zinc-800 rounded-lg shadow-xl" />
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-8 bg-zinc-800 rounded-lg shadow-xl" />
+    </div>
+  );
+}
+
+function FlipClockScore({ num }: { num: number }) {
+  const padded = num.toString().padStart(3, '0');
+  return (
+    <div className="flex items-center justify-center">
+      {padded.split('').map((d, i) => (
+        <FlipClockNumber value={d} key={i} />
+      ))}
+    </div>
+  );
+}
+
 export default function Page01() {
   const [granboard, setGranboard] = useState<Granboard>();
-  const [score, setScore] = useState(START_SCORE); // 目前剩餘分數
-  const [round, setRound] = useState(1);           // 目前回合數
-  const [history, setHistory] = useState<number[]>([]); // 每回合三鏢總分
-  const [currThrows, setCurrThrows] = useState<number[]>([]); // 當前回合已丟鏢分
+  const [score, setScore] = useState(START_SCORE);
+  const [round, setRound] = useState(1);
+  const [history, setHistory] = useState<number[]>([]);
+  const [currThrows, setCurrThrows] = useState<number[]>([]);
   const [message, setMessage] = useState("請連接飛鏢靶");
-  const [playerName] = useState("Player 1");        // 玩家名稱
-  const [avatar] = useState("👨‍💻");                  // 玩家頭像
+  const [playerName] = useState("Player 1");
+  const [avatar] = useState("👨‍💻");
 
-  // 連接 Granboard + callback
+  // 連接 Granboard
   const handleConnect = async () => {
     setMessage("連線中...");
     try {
@@ -31,28 +60,23 @@ export default function Page01() {
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
-      if (currThrows.length >= 3) return; // 一回合最多3鏢
+      if (currThrows.length >= 3) return;
       setCurrThrows(prev => {
         const newThrows = [...prev, segment.Value];
-        // 射完三鏢自動結束回合
-        if (newThrows.length === 3) {
-          endRoundWithThrows(newThrows);
-        }
+        if (newThrows.length === 3) endRoundWithThrows(newThrows);
         return newThrows;
       });
       setScore(prevScore => prevScore - segment.Value);
     };
-  }, [granboard]); // 移除 currThrows 依賴避免重複監聽
+  }, [granboard]);
 
-  // 用於結束回合並加入當前鏢數
+  // 結束回合
   const endRoundWithThrows = (throwsToAdd: number[]) => {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(prev => [...prev, sum]);
     setCurrThrows([]);
     setRound(r => r + 1);
   };
-
-  // 手動結束回合（按鈕觸發）
   const endRound = () => {
     if (currThrows.length === 0) return;
     endRoundWithThrows(currThrows);
@@ -67,10 +91,7 @@ export default function Page01() {
     setMessage("已重設，請連接飛鏢靶");
   };
 
-  // 只顯示最新8回合歷史分數
   const displayedHistory = history.slice(-8);
-
-  // 取出玩家最終目前分數（選擇下方條）
   const currentTotal = START_SCORE - history.reduce((a, b) => a + b, 0) - currThrows.reduce((a, b) => a + b, 0);
 
   return (
@@ -84,9 +105,9 @@ export default function Page01() {
             <div className="mt-6 text-lg">第 <b>{round}</b> 回合</div>
             <div className="mt-8">
               <div className="text-xl underline mb-2">歷史回合分數（最近8回合）</div>
-              <ul className="text-lg space-y-1 max-h-56 overflow-y-auto scroll-smooth pr-2">
+              <ul className="text-xl space-y-1 max-h-56 overflow-y-auto scroll-smooth pr-2 font-bold">
                 {displayedHistory.map((sum, idx) => (
-                  <li key={idx} className="font-semibold">
+                  <li key={idx}>
                     R{history.length - displayedHistory.length + idx + 1}: {sum} 分
                   </li>
                 ))}
@@ -95,25 +116,9 @@ export default function Page01() {
           </div>
         </div>
 
-        {/* 中間：目前大分數 */}
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-          <div
-            className="
-              text-[14rem] leading-none font-extrabold mb-2 tracking-widest select-none text-center
-              text-gradient-metal
-              drop-shadow-[0_6px_16px_rgba(255,215,0,0.9)]
-            "
-            style={{
-              textShadow: `
-                0 0 20px #FFD700,
-                2px 2px 4px #997a00,
-                4px 4px 15px #664d00,
-                -2px -2px 8px #fffde7
-              `
-            }}
-          >
-            {score >= 0 ? score : 0}
-          </div>
+        {/* 中間翻頁時鐘分數 */}
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[370px]">
+          <FlipClockScore num={score >= 0 ? score : 0} />
         </div>
 
         {/* 右側：本回合鏢/按鈕 */}
@@ -124,17 +129,17 @@ export default function Page01() {
               ☰
             </button>
           </div>
-          {/* 每鏢分數 */}
+          {/* 每鏢分數放大 */}
           <div>
             <div className="mb-2 text-xl text-right font-semibold">本回合分數</div>
-            <ul className="space-y-3 text-xl min-w-[60px] text-right pr-1">
+            <ul className="space-y-3 text-2xl min-w-[70px] text-right pr-1 font-bold">
               {[0, 1, 2].map(i => (
                 <li key={i}
-                  className={`py-2 px-4 rounded border ${
-                    currThrows[i] !== undefined
-                      ? 'border-yellow-400 text-yellow-300 font-bold'
-                      : 'border-zinc-700 text-zinc-500'
-                  }`}
+                    className={`py-2 px-4 rounded border ${
+                      currThrows[i] !== undefined
+                        ? 'border-yellow-400 text-yellow-300'
+                        : 'border-zinc-700 text-zinc-500'
+                    }`}
                 >
                   {currThrows[i] !== undefined ? currThrows[i] : '--'}
                 </li>
@@ -180,13 +185,13 @@ export default function Page01() {
       <style jsx>{`
         /* 金屬質感文字漸層 */
         .text-gradient-metal {
-          background: linear-gradient(135deg, #f7f7f7, #c6c6c6 20%, #a3a3a3 40%, #fff 60%, #d2aa18 80%, #a77b00 90%, #f0e68c);
+          background: linear-gradient(135deg, #f7f7f7, #a9a9a9 20%, #fff 50%, #c9ac36 70%, #8a6d1b 85%, #f7f7f7 95%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
           text-fill-color: transparent;
+          filter: drop-shadow(0 0 8px #fffbe9a9);
         }
-        /* 自訂 scrollbar 樣式 */
         ul::-webkit-scrollbar {
           width: 8px;
         }
@@ -203,4 +208,3 @@ export default function Page01() {
     </main>
   );
 }
-
