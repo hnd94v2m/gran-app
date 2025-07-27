@@ -5,7 +5,6 @@ import { Segment } from "@/services/boardinfo";
 
 const START_SCORE = 501;
 
-// 翻頁時鐘數字元件
 function FlipClockNumber({ value }: { value: string }) {
   return (
     <div className="relative flex items-center justify-center w-32 h-48 bg-zinc-900 rounded-xl mx-2 shadow-[0_8px_24px_rgba(0,0,0,0.6)] border-[3px] border-zinc-700 overflow-hidden">
@@ -79,7 +78,6 @@ export default function Page01() {
         return newThrows;
       });
     };
-    // eslint-disable-next-line
   }, [granboard, currThrows, lastRoundThrows]);
 
   const endRoundWithThrows = (throwsToAdd: number[]) => {
@@ -107,6 +105,19 @@ export default function Page01() {
   const displayedCurrThrows = lastRoundThrows.length > 0 ? lastRoundThrows : currThrows;
   const currentTotal = START_SCORE - history.reduce((a, b) => a + b, 0) - displayedCurrThrows.reduce((a, b) => a + b, 0);
 
+  // 計算歷史回合每格背景色，從最舊灰到最新白
+  function bgColorByIndex(index: number, length: number): string {
+    if (length === 1) return '#f8f8f8';
+    // 線性從暗灰（32）到亮灰（248）
+    const minGray = 32;
+    const maxGray = 248;
+    const ratio = index / (length - 1); // 0 = 最舊, 1 = 最新
+    // 顏色用反比，最新最白（maxGray）
+    const grayValue = Math.round(minGray + (maxGray - minGray) * ratio);
+    // 灰階色碼
+    return `rgb(${grayValue},${grayValue},${grayValue})`;
+  }
+
   return (
     <div
       className="bg-black text-white w-full min-h-screen flex items-center justify-center"
@@ -119,21 +130,30 @@ export default function Page01() {
     >
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1">
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
-          {/* 歷史回合分數框：兩欄表格 */}
+
+          {/* 歷史回合分數框：獨立區塊，兩欄表格無標題 */}
           <div className="flex flex-col justify-center items-center w-[330px] min-w-[300px] px-4">
             <div
               ref={historyBox}
-              className="bg-[#141313] rounded-2xl border-2 border-zinc-700 shadow-inner flex flex-col h-[22rem] max-h-[78vh] w-full overflow-y-scroll custom-scrollbar py-4"
+              className="rounded-2xl shadow-inner flex flex-col h-[22rem] max-h-[78vh] w-full overflow-y-scroll custom-scrollbar py-4"
             >
               <div className="w-full">
-                <div className="grid grid-cols-2 gap-x-2">
-                  <div className="text-2xl text-gray-400 font-bold border-b border-zinc-700 pb-1 text-center">回合</div>
-                  <div className="text-2xl text-gray-400 font-bold border-b border-zinc-700 pb-1 text-center">分數</div>
+                <div className="grid grid-cols-2 gap-x-2 text-center">
                   {history.map((sum, idx) => (
-                    <>
-                      <div key={`r${idx+1}`} className="text-2xl text-gray-300 font-bold py-1 text-center">R{idx+1}</div>
-                      <div key={`s${idx+1}`} className="text-4xl text-yellow-300 font-extrabold py-1 text-center">{sum}</div>
-                    </>
+                    <React.Fragment key={idx}>
+                      <div
+                        style={{ backgroundColor: bgColorByIndex(idx, history.length) }}
+                        className="text-2xl font-bold text-gray-900 py-2 border border-black select-none"
+                      >
+                        R{idx + 1}
+                      </div>
+                      <div
+                        style={{ backgroundColor: bgColorByIndex(idx, history.length) }}
+                        className="text-4xl font-extrabold py-2 border border-black select-none"
+                      >
+                        {sum}
+                      </div>
+                    </React.Fragment>
                   ))}
                 </div>
               </div>
@@ -149,13 +169,12 @@ export default function Page01() {
           <div className="flex flex-col justify-center items-center w-[330px] min-w-[300px] px-4">
             <div className="flex flex-col items-center justify-center mb-8 w-full">
               {[0, 1, 2].map(i => {
-                // 準備丟的那一鏢：找到首個undefined
                 const highlight = displayedCurrThrows[i] === undefined &&
                   displayedCurrThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div
                     key={i}
-                    className={`my-2 flex flex-col items-center w-full`}
+                    className="my-2 flex flex-col items-center w-full"
                   >
                     <div
                       className={`
@@ -165,8 +184,8 @@ export default function Page01() {
                           displayedCurrThrows[i] !== undefined
                             ? 'border-yellow-400 text-yellow-300 bg-zinc-900'
                             : highlight
-                            ? 'border-green-400 text-white bg-green-800 animate-pulse'
-                            : 'border-zinc-600 text-zinc-500 bg-zinc-900'
+                              ? 'border-green-400 text-white bg-green-800 animate-pulse'
+                              : 'border-zinc-600 text-zinc-500 bg-zinc-900'
                         }
                         transition-all
                       `}
