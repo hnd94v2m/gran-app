@@ -80,8 +80,28 @@ export default function Page01() {
         </div>
 
         {/* 中間：目前大分數 */}
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="text-7xl font-extrabold mb-2 tracking-wider drop-shadow-lg">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[340px]">
+          <div
+            className="
+              text-[12rem]
+              leading-none
+              font-extrabold
+              mb-2
+              tracking-widest
+              drop-shadow-[0_4px_12px_rgba(0,0,0,0.65)]
+              text-white
+              select-none
+              text-center
+              [text-shadow:_2px_2px_8px_rgba(0,0,0,0.65),0_1px_0_#fff]
+            "
+            style={{
+              textShadow: `
+                0 2px 18px #222,
+                0 0 1px #fff,
+                0 1px 0 #fff
+              `
+            }}
+          >
             {score >= 0 ? score : 0}
           </div>
         </div>
