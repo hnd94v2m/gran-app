@@ -1,13 +1,14 @@
 'use client';
-import React from 'react';  // 必須 import React，才能正確使用 <React.Fragment>
+import React from 'react';
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from 'next/navigation';
 import { Granboard } from "@/services/granboard";
 import { Segment } from "@/services/boardinfo";
 
 const START_SCORE = 501;
 
-// 翻頁時鐘數字元件
 function FlipClockNumber({ value }: { value: string }) {
+  //... 省略同前，保持原有實作
   return (
     <div className="relative flex items-center justify-center w-32 h-48 bg-zinc-900 rounded-xl mx-2 shadow-[0_8px_24px_rgba(0,0,0,0.6)] border-[3px] border-zinc-700 overflow-hidden">
       <div className="absolute left-2 right-2 top-1/2 h-0.5 bg-zinc-700/80 z-10" />
@@ -23,7 +24,6 @@ function FlipClockNumber({ value }: { value: string }) {
   );
 }
 
-// 大分數組合元件
 function FlipClockScore({ num }: { num: number }) {
   const padded = num.toString().padStart(3, '0');
   return (
@@ -36,6 +36,8 @@ function FlipClockScore({ num }: { num: number }) {
 }
 
 export default function Page01() {
+  const router = useRouter();
+
   const [granboard, setGranboard] = useState<Granboard>();
   const [score, setScore] = useState(START_SCORE);
   const [round, setRound] = useState(1);
@@ -47,20 +49,20 @@ export default function Page01() {
   const [lastRoundThrows, setLastRoundThrows] = useState<number[]>([]);
   const historyBox = useRef<HTMLDivElement>(null);
 
-  // 自動滾動到底部歷史回合分數區
+  // 新增狀態管理選單開關
+  const [menuOpen, setMenuOpen] = useState(false);
+
   useEffect(() => {
     if (historyBox.current) {
       historyBox.current.scrollTop = historyBox.current.scrollHeight;
     }
   }, [history]);
 
-  // 頁面一載入就嘗試自動連接藍牙靶
   useEffect(() => {
     handleConnect();
     // eslint-disable-next-line
   }, []);
 
-  // 連接 Granboard 並設置回調
   const handleConnect = async () => {
     setMessage("連線中...");
     try {
@@ -75,15 +77,13 @@ export default function Page01() {
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
-      // 新回合第一鏢時清空上回合暫存分數
       if (currThrows.length === 0 && lastRoundThrows.length > 0) {
         setLastRoundThrows([]);
       }
-      if (currThrows.length >= 3) return; // 最多三鏢
+      if (currThrows.length >= 3) return;
       setCurrThrows(prev => {
         const newThrows = [...prev, segment.Value];
         setScore(prevScore => prevScore - segment.Value);
-        // 首鏢清除上一回合
         if (prev.length === 0 && lastRoundThrows.length > 0) setLastRoundThrows([]);
         if (newThrows.length === 3) endRoundWithThrows(newThrows);
         return newThrows;
@@ -92,7 +92,6 @@ export default function Page01() {
     // eslint-disable-next-line
   }, [granboard, currThrows, lastRoundThrows]);
 
-  // 結束回合
   const endRoundWithThrows = (throwsToAdd: number[]) => {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(prev => [...prev, sum]);
@@ -106,7 +105,6 @@ export default function Page01() {
     endRoundWithThrows(currThrows);
   };
 
-  // 重設遊戲
   const resetGame = () => {
     setScore(START_SCORE);
     setRound(1);
@@ -114,15 +112,17 @@ export default function Page01() {
     setCurrThrows([]);
     setLastRoundThrows([]);
     setMessage("已重設，請連接飛鏢靶");
+    setMenuOpen(false); // 選單關閉
   };
 
-  // 本回合顯示鏢數，優先顯示上一回合暫存鏢數（還沒被覆蓋則顯示）
-  const displayedCurrThrows = lastRoundThrows.length > 0 ? lastRoundThrows : currThrows;
+  const goHome = () => {
+    router.push('/');
+    setMenuOpen(false);
+  };
 
-  // 換算目前分數
+  const displayedCurrThrows = lastRoundThrows.length > 0 ? lastRoundThrows : currThrows;
   const currentTotal = START_SCORE - history.reduce((a, b) => a + b, 0) - displayedCurrThrows.reduce((a, b) => a + b, 0);
 
-  // 灰階背景漸層：越近回合越亮
   function bgColorByIndex(index: number, length: number): string {
     if (length === 1) return '#f8f8f8';
     const minGray = 32;
@@ -140,12 +140,52 @@ export default function Page01() {
         minHeight: '100vh',
         minWidth: '100vw',
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
-      <main className="flex flex-col w-full h-[100svh] max-w-full flex-1">
-        <div className="flex-1 flex flex-row items-stretch w-full h-full">
+      <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
+        {/* 右上角選單按鈕 */}
+        <div className="absolute top-4 right-4 z-50">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="p-2 rounded-full bg-zinc-800 hover:bg-zinc-700 shadow text-xl select-none"
+            aria-label="選單切換"
+          >
+            ☰
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-44 bg-zinc-900 border border-zinc-700 rounded shadow-lg flex flex-col">
+              <button
+                className="px-4 py-2 text-left hover:bg-zinc-700 focus:bg-zinc-700"
+                onClick={() => {
+                  handleConnect();
+                  setMenuOpen(false);
+                }}
+              >
+                重新連接
+              </button>
+              <button
+                className="px-4 py-2 text-left hover:bg-zinc-700 focus:bg-zinc-700"
+                onClick={() => {
+                  resetGame();
+                }}
+              >
+                重新開始
+              </button>
+              <button
+                className="px-4 py-2 text-left hover:bg-zinc-700 focus:bg-zinc-700"
+                onClick={() => {
+                  goHome();
+                }}
+              >
+                返回首頁
+              </button>
+            </div>
+          )}
+        </div>
 
-          {/* 歷史回合分數區塊，兩欄表格，無標題與框線 */}
+        <div className="flex-1 flex flex-row items-stretch w-full h-full">
+          {/* 歷史回合分數區塊 */}
           <div className="flex flex-col justify-center items-center w-[330px] min-w-[300px] px-4">
             <div
               ref={historyBox}
@@ -174,12 +214,12 @@ export default function Page01() {
             </div>
           </div>
 
-          {/* 中間大分數區 使用翻頁時鐘風格 */}
+          {/* 中間大分數 */}
           <div className="flex flex-col items-center justify-center flex-1 min-w-0 min-h-[380px]">
             <FlipClockScore num={score >= 0 ? score : 0} />
           </div>
 
-          {/* 本回合分數（上下排列），待丟鏢高亮 */}
+          {/* 本回合分數（上下排列）與按鈕 */}
           <div className="flex flex-col justify-center items-center w-[330px] min-w-[300px] px-4">
             <div className="flex flex-col items-center justify-center mb-8 w-full">
               {[0, 1, 2].map(i => {
@@ -192,7 +232,7 @@ export default function Page01() {
                   >
                     <div
                       className={`
-                        w-28 h-24 flex items-center justify-center rounded-2xl border-2
+                        w-28 h-24 flex items-center justify-center rounded-2xl border-2 
                         text-4xl font-extrabold
                         ${
                           displayedCurrThrows[i] !== undefined
@@ -233,7 +273,7 @@ export default function Page01() {
           </div>
         </div>
 
-        {/* 下方玩家資訊條 */}
+        {/* 下方玩家條 */}
         <div className="flex items-center justify-center gap-6 w-full py-5 bg-gradient-to-t from-black via-zinc-950/80">
           <span className="inline-block w-16 h-16 rounded-full bg-zinc-700 text-5xl flex items-center justify-center select-none">
             {avatar}
@@ -244,7 +284,6 @@ export default function Page01() {
           </span>
         </div>
 
-        {/* 特殊樣式 */}
         <style jsx>{`
           .text-gradient-metal {
             background: linear-gradient(135deg, #f7f7f7, #a9a9a9 20%, #fff 50%, #c9ac36 70%, #8a6d1b 85%, #f7f7f7 95%);
