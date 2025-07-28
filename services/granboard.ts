@@ -1,3 +1,5 @@
+type BluetoothRemoteGATTCharacteristic = any;
+
 import { CreateSegment, Segment, SegmentID } from "./boardinfo";
 
 const GRANBOARD_UUID = "442f1570-8a00-9a28-cbe1-e1d4212d53eb";
