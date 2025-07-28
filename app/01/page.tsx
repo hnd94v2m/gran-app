@@ -1,29 +1,90 @@
 'use client';
-import React from 'react';
-import { useEffect, useState, useRef } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { Granboard } from "@/services/granboard";
 import { Segment } from "@/services/boardinfo";
 
-const START_SCORE = 501;
+// ===== 動畫翻頁時鐘數字元件 =====
+// 只做單位數字翻頁（簡單動畫、無第三方套件）
+function FlipDigit({ digit, prevDigit }: { digit: string; prevDigit: string }) {
+  const [flipping, setFlipping] = useState(false);
 
-// 放大後的翻頁時鐘數字元件
-function FlipClockNumber({ value }: { value: string }) {
+  useEffect(() => {
+    if (digit !== prevDigit) {
+      setFlipping(true);
+      const t = setTimeout(() => setFlipping(false), 500);
+      return () => clearTimeout(t);
+    }
+  }, [digit, prevDigit]);
+
   return (
-    <div className="relative flex items-center justify-center w-60 h-96 bg-zinc-900 rounded-xl mx-1 shadow-[0_12px_36px_rgba(0,0,0,0.6)] border-4 border-zinc-700 overflow-hidden">
-      <div className="absolute left-4 right-4 top-1/2 h-1 bg-zinc-700/80 z-10" />
-      <span className="font-mono text-[14rem] font-extrabold select-none tracking-wider text-gradient-metal z-20" style={{ letterSpacing: '0.06em' }}>{value}</span>
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-10 bg-zinc-800 rounded-lg shadow-xl" />
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-10 bg-zinc-800 rounded-lg shadow-xl" />
+    <div className="flip-digit-container w-56 h-[190px] mx-2 relative text-[11rem] font-black select-none 
+        bg-zinc-900 border-4 border-zinc-700 overflow-hidden"
+      style={{ perspective: 900 }}
+    >
+      {/* 靜態下只顯示新數字，上半部 */}
+      <div className="flip-digit-top absolute inset-0 flex items-start justify-center h-1/2 z-10 overflow-hidden">
+        <span className="flip-digit-number text-gradient-metal drop-shadow-lg">
+          {digit}
+        </span>
+      </div>
+      {/* 動畫翻面（上面） */}
+      <div className={`flip-anim-top absolute inset-0 flex items-start justify-center h-1/2 z-20 overflow-hidden`}
+        style={{
+          transform: flipping ? "rotateX(-90deg)" : "rotateX(0deg)",
+          transformOrigin: "bottom",
+          transition: 'transform 0.25s cubic-bezier(0.6,0,0.4,1)',
+          backfaceVisibility: 'hidden',
+        }}>
+        <span className="flip-digit-number text-gradient-metal drop-shadow-lg">
+          {prevDigit}
+        </span>
+      </div>
+      {/* 下半部 */}
+      <div className="flip-digit-bottom absolute top-1/2 left-0 right-0 bottom-0 flex items-end justify-center z-10 overflow-hidden">
+        <span className="flip-digit-number text-gradient-metal drop-shadow-lg">
+          {digit}
+        </span>
+      </div>
+      {/* 動畫翻面（下面） */}
+      <div className={`flip-anim-bottom absolute top-1/2 left-0 right-0 bottom-0 flex items-end justify-center z-20 overflow-hidden`}
+        style={{
+          transform: flipping ? "rotateX(0deg)" : "rotateX(90deg)",
+          transformOrigin: "top",
+          transition: 'transform 0.25s cubic-bezier(0.6,0,0.4,1)',
+          backfaceVisibility: 'hidden',
+        }}>
+        <span className="flip-digit-number text-gradient-metal drop-shadow-lg">
+          {digit}
+        </span>
+      </div>
+      {/* 分割線 */}
+      <div className="absolute left-4 right-4 top-1/2 h-1 bg-zinc-700/80 z-30" />
+      {/* 中軸點 */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-10 bg-zinc-800 z-40" />
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-10 bg-zinc-800 z-40" />
     </div>
   );
 }
-function FlipClockScore({ num }: { num: number }) {
+
+// 多位數翻頁時鐘
+function AnimatedFlipScore({ num }: { num: number }) {
   const padded = num.toString().padStart(3, '0');
+  // 前一數字，用於動畫
+  const [prev, setPrev] = useState(padded);
+
+  useEffect(() => {
+    setPrev(padded);
+  }, [num]);
+
   return (
     <div className="flex items-center justify-center">
-      {padded.split('').map((d, i) => (
-        <FlipClockNumber value={d} key={i} />
+      {[0, 1, 2].map(i => (
+        <FlipDigit
+          key={i}
+          digit={padded[i]}
+          prevDigit={prev[i]}
+        />
       ))}
     </div>
   );
@@ -33,23 +94,18 @@ export default function Page01() {
   const router = useRouter();
 
   const [granboard, setGranboard] = useState<Granboard>();
-  const [score, setScore] = useState(START_SCORE);
+  const [score, setScore] = useState(501);
   const [round, setRound] = useState(1);
   const [history, setHistory] = useState<number[]>([]);
   const [currThrows, setCurrThrows] = useState<number[]>([]);
-  const [message, setMessage] = useState("請連接飛鏢靶");
-  const [playerName] = useState("Player 1");
-  const [avatar] = useState("👨‍💻");
   const [lastRoundThrows, setLastRoundThrows] = useState<number[]>([]);
-  const historyBox = useRef<HTMLDivElement>(null);
-
   const [menuOpen, setMenuOpen] = useState(false);
   const [fatBullEnabled, setFatBullEnabled] = useState(false);
+  const [playerName] = useState("Player 1");
+  const [avatar] = useState("👨‍💻");
+  const historyBox = useRef<HTMLDivElement>(null);
 
-  // 自動滾動到底
-  useEffect(() => {
-    if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight;
-  }, [history]);
+  useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
   useEffect(() => { handleConnect(); }, []);
 
   function getAdjustedScore(segmentValue: number): number {
@@ -59,14 +115,10 @@ export default function Page01() {
   }
 
   const handleConnect = async () => {
-    setMessage("連線中...");
     try {
       const gb = await Granboard.ConnectToBoard();
       setGranboard(gb);
-      setMessage("連線成功，開始比賽！");
-    } catch {
-      setMessage("連線失敗，請重試！");
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -100,15 +152,13 @@ export default function Page01() {
     setMenuOpen(false);
   };
   const resetGame = () => {
-    setScore(START_SCORE); setRound(1); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
-    setMessage("已重設，請連接飛鏢靶"); setMenuOpen(false);
+    setScore(501); setRound(1); setHistory([]); setCurrThrows([]); setLastRoundThrows([]); setMenuOpen(false);
   };
   const goHome = () => { router.push('/'); setMenuOpen(false); };
   const toggleFatBull = () => setFatBullEnabled(enabled => !enabled);
 
   const displayedCurrThrows = lastRoundThrows.length > 0 ? lastRoundThrows : currThrows;
-  const currentTotal = START_SCORE - history.reduce((a, b) => a + b, 0) - displayedCurrThrows.reduce((a, b) => a + b, 0);
-
+  const currentTotal = 501 - history.reduce((a, b) => a + b, 0) - displayedCurrThrows.reduce((a, b) => a + b, 0);
   function bgColorByIndex(index: number, length: number): string {
     if (length === 1) return '#f8f8f8';
     const minGray = 32, maxGray = 248;
@@ -117,21 +167,21 @@ export default function Page01() {
     return `rgb(${grayValue},${grayValue},${grayValue})`;
   }
 
-  const squareBtnClass =
-    "w-28 h-28 flex items-center justify-center rounded-xl bg-green-700 hover:bg-green-600 transition shadow-lg text-white text-5xl p-0";
-  const menuBtnClass =
-    "w-28 h-28 flex items-center justify-center rounded-xl bg-zinc-800 hover:bg-zinc-700 transition shadow-lg text-white text-4xl p-0";
+  // 正方形無圓角按鈕
+  const squareBtnClass = "w-28 h-28 flex items-center justify-center bg-green-700 hover:bg-green-600 shadow-lg text-white text-5xl p-0";
+  const menuBtnClass = "w-28 h-28 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 shadow-lg text-white text-4xl p-0";
 
   return (
     <div className="bg-black text-white w-full min-h-screen flex items-center justify-center"
       style={{ aspectRatio: '16/9', minHeight: '100vh', minWidth: '100vw', overflow: 'hidden', position: 'relative' }}>
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
 
-        {/* 右上角選單按鈕 */}
+        {/* 右上角選單按鈕：無圓角 */}
         <div className="absolute top-6 right-8 z-50">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className={menuBtnClass}
+            style={{ borderRadius: 0 }}
             aria-label="選單切換"
           >
             <svg width="36" height="36" viewBox="0 0 20 20" fill="none" className="w-14 h-14 inline-block">
@@ -148,9 +198,7 @@ export default function Page01() {
               <button className="flex justify-between items-center px-8 py-5 text-2xl hover:bg-zinc-700 focus:bg-zinc-700 cursor-pointer" onClick={toggleFatBull}>
                 <span>Fat Bull</span>
                 <span className={`ml-3 w-7 h-7 rounded-full border-2 border-yellow-400 flex items-center justify-center`}>
-                  {fatBullEnabled
-                    ? <span className="w-5 h-5 bg-yellow-400 rounded-full block" />
-                    : ''}
+                  {fatBullEnabled ? <span className="w-5 h-5 bg-yellow-400 rounded-full block" /> : ''}
                 </span>
               </button>
               <button className="px-8 py-5 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700" onClick={() => { goHome(); }}>返回首頁</button>
@@ -159,7 +207,6 @@ export default function Page01() {
         </div>
 
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
-
           {/* 歷史回合分數區塊：窄，間距縮小 */}
           <div className="flex flex-col justify-center items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
             <div ref={historyBox} className="rounded-2xl shadow-inner flex flex-col h-[32rem] max-h-[87vh] w-full overflow-y-scroll custom-scrollbar py-7">
@@ -177,13 +224,11 @@ export default function Page01() {
               </div>
             </div>
           </div>
-
-          {/* 中間大分數區，寬度2/3，左右縮開不再重疊，最大寬度限制 */}
+          {/* 中間翻頁動畫大分數區 */}
           <div className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[480px]">
-            <FlipClockScore num={score >= 0 ? score : 0} />
+            <AnimatedFlipScore num={score >= 0 ? score : 0} />
           </div>
-
-          {/* 本回合分數&回合切換：格子間距縮小、右欄窄 */}
+          {/* 本回合分數區與回合切換，格子去圓角，間距縮小 */}
           <div className="flex flex-col justify-center items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
             <div className="flex flex-col items-center justify-center mb-16 w-full scale-[1.25] gap-y-3">
               {[0, 1, 2].map(i => {
@@ -191,24 +236,38 @@ export default function Page01() {
                   displayedCurrThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div key={i} className="my-1 flex flex-col items-center w-full">
-                    <div className={`
-                      w-32 h-28 flex items-center justify-center rounded-2xl border-2 text-5xl font-extrabold
-                      ${displayedCurrThrows[i] !== undefined
-                        ? 'border-yellow-400 text-yellow-300 bg-zinc-900'
-                        : highlight
-                        ? 'border-green-400 text-white bg-green-800 animate-pulse'
-                        : 'border-zinc-600 text-zinc-500 bg-zinc-900'
-                      }
-                      transition-all`}>
-                      {displayedCurrThrows[i] !== undefined ? displayedCurrThrows[i] : '--'}
+                    <div style={{
+                      width: "160px", height: "100px", // 8:5比例
+                      borderRadius: 0,
+                      transform: "skew(-20deg, -10deg) translateY(0px)",
+                      fontStyle: "italic",
+                    }}
+                      className={`
+                        flex items-center justify-center border-2 text-5xl font-extrabold
+                        ${displayedCurrThrows[i] !== undefined
+                          ? 'border-yellow-400 text-yellow-300 bg-zinc-900'
+                          : highlight
+                          ? 'border-green-400 text-white bg-green-800 animate-pulse'
+                          : 'border-zinc-600 text-zinc-500 bg-zinc-900'
+                        }
+                        transition-all select-none`}>
+                      <span style={{
+                        display: "block",
+                        fontStyle: "italic",
+                        transform: "skew(20deg, 10deg) translate(16px,-12px)", // 字回正但往右上偏移
+                        fontWeight: 900
+                      }}>
+                        {displayedCurrThrows[i] !== undefined ? displayedCurrThrows[i] : '--'}
+                      </span>
                     </div>
                   </div>
                 );
               })}
             </div>
-            {/* 正方形 ROUND CHANGE 按鈕 */}
+            {/* ROUND CHANGE：無圓角正方形 */}
             <button
               className={squareBtnClass}
+              style={{ borderRadius: 0 }}
               onClick={endRound}
               disabled={currThrows.length === 0}
               title="ROUND CHANGE"
@@ -221,7 +280,6 @@ export default function Page01() {
             </button>
           </div>
         </div>
-
         {/* 下方玩家條 */}
         <div className="flex items-center justify-center gap-10 w-full py-8 bg-gradient-to-t from-black via-zinc-950/80">
           <span className="inline-block w-28 h-28 rounded-full bg-zinc-700 text-[5rem] flex items-center justify-center select-none">{avatar}</span>
@@ -230,7 +288,6 @@ export default function Page01() {
             {currentTotal >= 0 ? currentTotal : 0}
           </span>
         </div>
-
         <style jsx>{`
           .text-gradient-metal {
             background: linear-gradient(135deg, #f7f7f7, #a9a9a9 20%, #fff 50%, #c9ac36 70%, #8a6d1b 85%, #f7f7f7 95%);
