@@ -2,11 +2,9 @@
 import React, { useRef, useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { Granboard } from "@/services/granboard";
-import { Segment, SegmentType, SegmentSection } from "@/services/boardinfo";
+import { Segment, SegmentType } from "@/services/boardinfo";
 
-const START_SCORE = 501;
-
-// 終端機動畫大字數字元件
+// 終端機動畫大數字
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState('0');
   useEffect(() => {
@@ -22,22 +20,24 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
       } else {
         setCurrent(Math.floor(Math.random() * 10).toString());
       }
-    }, 48);
+    }, 50);
     return () => clearInterval(interval);
   }, [digit]);
   return (
-    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold px-8 py-10 rounded shadow-2xl text-[23rem] leading-none drop-shadow-xl flex items-end"
-      style={{ height: '26rem', letterSpacing: '-0.08em' }}>
+    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold px-8 py-10 rounded shadow-2xl text-[20rem] leading-none drop-shadow-xl flex items-end"
+      style={{ height: '24rem', letterSpacing: '-0.08em' }}>
       {current}
     </span>
   );
 }
+
 function TerminalFlipScore({ num, showBust }: { num: number, showBust: boolean }) {
   if (showBust) {
+    // Bust 字和大分數寬高完全一致
     return (
       <div className="flex flex-row items-end justify-center">
-        <span className="terminal-digit font-mono text-red-500 bg-black font-black text-[13rem] px-10 py-16 rounded shadow-2xl flex items-center"
-          style={{ height: '26rem', letterSpacing: '-0.03em' }}>
+        <span className="terminal-digit font-mono text-red-500 bg-black font-black text-[20rem] px-8 py-10 rounded shadow-2xl flex items-center"
+          style={{ height: '24rem', letterSpacing: '-0.03em' }}>
           BUST
         </span>
       </div>
@@ -46,10 +46,60 @@ function TerminalFlipScore({ num, showBust }: { num: number, showBust: boolean }
   const padded = num.toString().padStart(3, '0');
   return (
     <div className="flex flex-row justify-center items-end"
-      style={{ gap: '0.25em'/* 近乎全貼齊*/ }}>
+      style={{ gap: '0.10em' }}>
       {padded.split('').map((d, i) => (
         <TerminalFlipDigit digit={d} key={i} />
       ))}
+    </div>
+  );
+}
+
+// MO/OO 切換圖示（如附圖，左右切換，方形滑塊、三條防滑槓）
+function SwitchBox({ checked, onChange }: { checked: boolean, onChange: () => void }) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onChange}
+      className="relative flex items-center w-20 h-11 bg-zinc-700 rounded-lg cursor-pointer select-none transition"
+      style={{ borderRadius: 8 }}
+    >
+      {/* 滑桿軌道 */}
+      {/* 滑塊 */}
+      <div
+        className={`absolute top-1 left-1 transition-transform duration-200`}
+        style={{
+          transform: checked ? "translateX(3.8rem)" : "translateX(0)",
+        }}
+      >
+        <div className="switch-square w-9 h-9 bg-white rounded-md flex flex-col items-center justify-center shadow ring-2 ring-zinc-400">
+          {/* 三條槓 */}
+          <div className="w-6 h-1 bg-zinc-700 rounded mb-1" />
+          <div className="w-6 h-1 bg-zinc-700 rounded mb-1" />
+          <div className="w-6 h-1 bg-zinc-700 rounded" />
+        </div>
+      </div>
+      {/* 背景會隨 checked 顏色淡淡浮動 */}
+      <div className={`absolute inset-0 rounded-lg transition ${checked ? "bg-blue-200/40" : "bg-zinc-200/20"}`}></div>
+      {/* 滑塊標記 */}
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 font-black font-mono text-base text-gray-900">MO</div>
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 font-black font-mono text-base text-blue-800">OO</div>
+    </div>
+  );
+}
+
+// Fat Bull 選項：空心/實心圓
+function FatBullSwitch({ enabled, onChange }: { enabled: boolean, onChange: () => void }) {
+  return (
+    <div onClick={onChange} className="w-10 h-10 flex items-center justify-center cursor-pointer" tabIndex={0}>
+      {enabled
+        ? (
+          <span className="inline-block w-8 h-8 rounded-full border-2 border-yellow-400 bg-yellow-400" />
+        )
+        : (
+          <span className="inline-block w-8 h-8 rounded-full border-2 border-yellow-400 bg-transparent" />
+        )
+      }
     </div>
   );
 }
@@ -64,8 +114,8 @@ export default function Page01() {
   const [lastRoundThrows, setLastRoundThrows] = useState<number[]>([]);
   const HistoryBox = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [fatBullEnabled, setFatBullEnabled] = useState(true);  // Fat Bull 預設開
-  const [moMode, setMoMode] = useState(true);  // 預設 MO，true=MO false=OO
+  const [fatBullEnabled, setFatBullEnabled] = useState(true);
+  const [moMode, setMoMode] = useState(true);
   const [showBust, setShowBust] = useState(false);
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
@@ -75,18 +125,16 @@ export default function Page01() {
   }, [history]);
   useEffect(() => { handleConnect(); }, []);
 
-  function getAdjustedScore(val: number, seg?: Segment) {
-    // Fat Bull: 25/50 都 50 分
+  function getAdjustedScore(val: number) {
     if (fatBullEnabled && (val === 25 || val === 50)) return 50;
     return val;
   }
 
-  // 結標合法性(MO Mode: 必須倍區或紅心)
   function canFinish(segment: Segment, fatBull: boolean, mo: boolean) {
-    if (!mo) return true; // OO: 不限
+    if (!mo) return true;
     if (segment.Type === SegmentType.Double || segment.Type === SegmentType.Triple) return true;
     if (fatBull && (segment.Value === 25 || segment.Value === 50)) return true;
-    if (!fatBull && segment.Value === 50) return true; // 非Fat Bull 只允許 50
+    if (!fatBull && segment.Value === 50) return true;
     return false;
   }
 
@@ -97,15 +145,15 @@ export default function Page01() {
     } catch {}
   };
 
-  // 主邏輯: 計分+BUST判斷+自動回合刷新
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
       setCurrThrows(prev => {
-        const left = START_SCORE - history.reduce((a, b) => a + b, 0) - prev.reduce((a, b) => a + b, 0);
-        const hitVal = getAdjustedScore(segment.Value, segment);
+        // 「剩餘分數」用目前 score 扣去尚未history加總即可
+        const left = score - prev.reduce((a, b) => a + b, 0);
+        const hitVal = getAdjustedScore(segment.Value);
 
-        // 超標=BU**ST**
+        // 正確爆鏢只在 投擲==left+1 以上才觸發
         if (hitVal > left) {
           setShowBust(true);
           setTimeout(() => {
@@ -116,7 +164,7 @@ export default function Page01() {
           }, 1000);
           return [];
         }
-        // 若結標分數剛好，判斷 MO/OO
+        // 若結標，MO 必須倍區/紅心
         if (left - hitVal === 0) {
           const finishOk = canFinish(segment, fatBullEnabled, moMode);
           if (!finishOk) {
@@ -130,7 +178,8 @@ export default function Page01() {
             return [];
           }
         }
-        // 若已三鏢，下一鏢直接成新回合刷新
+
+        // 已三鏢，下一標直接為新回合
         if (prev.length >= 3) {
           endRoundWithThrows(prev);
           setTimeout(() => {
@@ -148,7 +197,6 @@ export default function Page01() {
         return newThrows;
       });
     };
-    // eslint-disable-next-line
   }, [granboard, currThrows, lastRoundThrows, fatBullEnabled, moMode, history, score]);
 
   const endRoundWithThrows = (throwsToAdd: number[]) => {
@@ -175,12 +223,8 @@ export default function Page01() {
     setScore(START_SCORE); setRound(1); setHistory([]); setCurrThrows([]); setLastRoundThrows([]); setMenuOpen(false); setShowBust(false);
   };
   const goHome = () => { router.push('/'); setMenuOpen(false); };
-  const toggleFatBull = () => setFatBullEnabled(enabled => !enabled);
-  const toggleMoMode = () => setMoMode(x => !x);
-
   const displayedCurrThrows = lastRoundThrows.length > 0 && currThrows.length === 0 ? lastRoundThrows : currThrows;
-  const currentTotal = START_SCORE - history.reduce((a, b) => a + b, 0) - displayedCurrThrows.reduce((a, b) => a + b, 0);
-
+  const currentTotal = score - displayedCurrThrows.reduce((a, b) => a + b, 0);
   function bgColorByIndex(index: number, length: number): string {
     if (length === 1) return '#f8f8f8';
     const minGray = 32, maxGray = 248;
@@ -189,55 +233,63 @@ export default function Page01() {
     return `rgb(${grayValue},${grayValue},${grayValue})`;
   }
 
-  // 小型按鈕統一尺寸
+  // 按鈕尺寸 now: 3rem=48px，格子=120px，不會比格子大
   const btnClass =
-    "w-14 h-14 flex items-center justify-center shadow-lg p-0";
+    "w-16 h-16 flex items-center justify-center shadow-lg p-0";
 
   return (
     <div className="bg-black text-white w-full min-h-screen flex items-center justify-center"
       style={{ aspectRatio: '16/9', minHeight: '100vh', minWidth: '100vw', overflow: 'hidden', position: 'relative' }}>
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
 
-        {/* 右上角縮小選單 */}
-        <div className="absolute top-6 right-8 z-50">
+        {/* 右上角加大選單 */}
+        <div className="absolute top-6 right-11 z-50">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className={btnClass + " bg-zinc-800 hover:bg-zinc-700 text-white"}
             style={{ borderRadius: 0 }}
             aria-label="選單切換"
           >
-            <svg width="28" height="28" viewBox="0 0 20 20" fill="none" className="w-9 h-9">
-              <rect y="3" width="20" height="2.4" rx="1" fill="currentColor" />
-              <rect y="8.5" width="20" height="2.4" rx="1" fill="currentColor" />
-              <rect y="14" width="20" height="2.4" rx="1" fill="currentColor" />
+            <svg width="30" height="30" viewBox="0 0 20 20" fill="none" className="w-12 h-12">
+              <rect y="3" width="20" height="2.6" rx="1" fill="currentColor" />
+              <rect y="8.5" width="20" height="2.6" rx="1" fill="currentColor" />
+              <rect y="14" width="20" height="2.6" rx="1" fill="currentColor" />
             </svg>
           </button>
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-zinc-700 rounded shadow-lg flex flex-col select-none z-[999]">
+            <div className="absolute right-0 mt-2 w-72 bg-zinc-900 border border-zinc-700 rounded shadow-lg flex flex-col select-none z-[999]">
               <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={() => { handleConnect(); setMenuOpen(false); }}>重新連接</button>
               <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={() => { resetGame(); }}>重新開始</button>
-              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={() => { retryCurrentRound(); }}>重投</button>
-              {/* Fat Bull 選項 */}
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={retryCurrentRound}>重投</button>
               <div className="flex justify-between items-center px-8 py-5 text-2xl hover:bg-zinc-700 focus:bg-zinc-700 select-none">
                 <span>Fat Bull</span>
-                <span onClick={toggleFatBull}
-                  className={`relative w-14 h-7 rounded-full border-2 border-yellow-400 flex items-center cursor-pointer ml-4 bg-black transition`}>
-                  <span className={`absolute left-1 top-1 bg-yellow-400 rounded-full w-5 h-5 transition-all duration-200 ease-in-out ${fatBullEnabled ? "translate-x-7" : ""}`}></span>
-                </span>
-                <span className="ml-2 text-sm text-yellow-400">{fatBullEnabled ? 'ON' : 'OFF'}</span>
+                <FatBullSwitch enabled={fatBullEnabled} onChange={setFatBullEnabled.bind(null, !fatBullEnabled)} />
               </div>
-              {/* MO/OO toggle */}
               <div className="flex justify-between items-center px-8 py-5 text-2xl hover:bg-zinc-700 focus:bg-zinc-700 select-none">
                 <span>MO/OO</span>
-                <span onClick={toggleMoMode}
-                  className={`relative w-14 h-7 rounded-full border-2 border-blue-400 flex items-center cursor-pointer ml-4 bg-black transition`}>
-                  <span className={`absolute ${moMode ? 'left-1' : 'right-1'} top-1 bg-blue-400 rounded-full w-5 h-5 transition-all duration-200 ease-in-out`} />
-                </span>
-                <span className="ml-3 font-mono text-base text-blue-400">{moMode ? 'MO' : 'OO'}</span>
+                <SwitchBox checked={moMode} onChange={setMoMode.bind(null, !moMode)} />
+                <span className={`ml-3 font-mono text-base ${moMode ? "text-blue-900" : "text-blue-400"}`}>{moMode ? 'MO' : 'OO'}</span>
               </div>
-              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700" onClick={() => { goHome(); }}>返回首頁</button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700" onClick={goHome}>返回首頁</button>
             </div>
           )}
+        </div>
+
+        {/* 右下回合切換按鈕 */}
+        <div className="absolute bottom-[7.5rem] right-11 z-50">
+          <button
+            className={btnClass + " bg-green-700 hover:bg-green-600 text-white"}
+            style={{ borderRadius: 0 }}
+            onClick={endRound}
+            disabled={currThrows.length === 0}
+            title="ROUND CHANGE"
+          >
+            {/* 換行箭頭icon */}
+            <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
+              <polyline points="12,10 12,28 28,28" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
+              <polygon points="28,28 21,23 21,33" fill="#fff" />
+            </svg>
+          </button>
         </div>
 
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
@@ -259,16 +311,15 @@ export default function Page01() {
               </div>
             </div>
           </div>
-          {/* 中間最大分數區，超大數字、縮窄數字間距 */}
+          {/* 中間最大分數區，數字特大且極窄間距 */}
           <div className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[520px]">
             <TerminalFlipScore num={score >= 0 ? score : 0} showBust={showBust} />
           </div>
-          {/* 右側本回合分數，垂直排列、下移，不與選單重疊，格子均為斜體字 */}
-          <div className="flex flex-col justify-end items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3 pb-10">
-            <div className="flex flex-col items-center w-full gap-y-8 mb-7 mt-16">
+          {/* 右側本回合分數，垂直對齊、下移避免和右上·右下按鈕重疊 */}
+          <div className="flex flex-col justify-end items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3 pb-12">
+            <div className="flex flex-col items-center w-full gap-y-4 mb-8 mt-14">
               {[0, 1, 2].map(i => {
-                const highlight = displayedCurrThrows[i] === undefined &&
-                  displayedCurrThrows.findIndex(v => v === undefined) === i;
+                const highlight = displayedCurrThrows[i] === undefined && displayedCurrThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div key={i} className="flex flex-col items-center w-40">
                     <div style={{width: '120px', height: '108px', borderRadius: 0 }}
@@ -287,20 +338,6 @@ export default function Page01() {
                 );
               })}
             </div>
-            {/* 縮小版 ROUND CHANGE 按鈕 */}
-            <button
-              className={btnClass + " bg-green-700 hover:bg-green-600 text-white"}
-              style={{ borderRadius: 0, marginTop: '12px' }}
-              onClick={endRound}
-              disabled={currThrows.length === 0}
-              title="ROUND CHANGE"
-            >
-              {/* 換行箭頭icon */}
-              <svg className="w-8 h-8" viewBox="0 0 40 40" fill="none">
-                <polyline points="12,10 12,28 28,28" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
-                <polygon points="28,28 21,23 21,33" fill="#fff" />
-              </svg>
-            </button>
           </div>
         </div>
         {/* 下方玩家條 */}
