@@ -6,7 +6,7 @@ import { Segment } from "@/services/boardinfo";
 
 const START_SCORE = 501;
 
-// 超放大終端機翻頁動畫大數字
+// 極大終端機動畫分數，縮小間距
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState('0');
   useEffect(() => {
@@ -22,11 +22,11 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
       } else {
         setCurrent((Math.floor(Math.random() * 10)).toString());
       }
-    }, 60);
+    }, 55);
     return () => clearInterval(interval);
   }, [digit]);
   return (
-    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold px-16 py-14 rounded shadow-2xl text-[18rem] leading-none drop-shadow-xl">
+    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold px-12 py-10 rounded shadow-2xl text-[16rem] leading-none drop-shadow-xl">
       {current}
     </span>
   );
@@ -34,7 +34,8 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
 function TerminalFlipScore({ num }: { num: number }) {
   const padded = num.toString().padStart(3, '0');
   return (
-    <div className="flex space-x-12 justify-center items-center">
+    <div className="flex flex-row justify-center items-center"
+         style={{ gap: '1.2rem' /* 縮小間距原本2.4~2.6rem */ }}>
       {padded.split('').map((d, i) => (
         <TerminalFlipDigit digit={d} key={i} />
       ))}
@@ -44,10 +45,9 @@ function TerminalFlipScore({ num }: { num: number }) {
 
 export default function Page01() {
   const router = useRouter();
+
   const [granboard, setGranboard] = useState<Granboard>();
   const [score, setScore] = useState(START_SCORE);
-
-  // 回合及投鏢狀態
   const [round, setRound] = useState(1);
   const [history, setHistory] = useState<number[]>([]);
   const [currThrows, setCurrThrows] = useState<number[]>([]);
@@ -58,7 +58,7 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // 滾到底
+  // 歷史回合自動滾到底
   useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
   useEffect(() => { handleConnect(); }, []);
 
@@ -81,32 +81,24 @@ export default function Page01() {
       setCurrThrows(prev => {
         // ▸ 若已投滿三鏢，這一標直接刷新進下個回合
         if (prev.length >= 3) {
-          endRoundWithThrows(prev); // 先結束本回合
+          endRoundWithThrows(prev);
           setTimeout(() => {
-            // 第四鏢成新回合的第一鏢
             setCurrThrows([getAdjustedScore(segment.Value)]);
             setScore(s => s - getAdjustedScore(segment.Value));
             setRound(r => r + 1);
-            setLastRoundThrows([]); // 清掉暫存，立刻刷新
+            setLastRoundThrows([]);
           }, 0);
-          return prev; // 本次不加進來
+          return prev;
         }
-
         const adjustedValue = getAdjustedScore(segment.Value);
         const newThrows = [...prev, adjustedValue];
         setScore(prevScore => prevScore - adjustedValue);
-
-        // 如達三鏢自動結束回合
-        if (newThrows.length === 3) {
-          endRoundWithThrows(newThrows);
-        }
+        if (newThrows.length === 3) endRoundWithThrows(newThrows);
         return newThrows;
       });
     };
-    // eslint-disable-next-line
   }, [granboard, currThrows, lastRoundThrows, fatBullEnabled]);
 
-  // 結束回合
   const endRoundWithThrows = (throwsToAdd: number[]) => {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(prev => [...prev, sum]);
@@ -177,36 +169,37 @@ export default function Page01() {
         </div>
 
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
-          {/* 歷史回合分數 */}
-          <div className="flex flex-col justify-center items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
-            <div ref={historyBox} className="rounded-2xl shadow-inner flex flex-col h-[32rem] max-h-[87vh] w-full overflow-y-scroll custom-scrollbar py-7">
+          {/* 歷史回合分數：左側欄高度填滿，超出可滾動 */}
+          <div className="flex flex-col justify-start items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
+            <div ref={historyBox}
+                className="rounded-2xl shadow-inner flex flex-col w-full h-full max-h-full overflow-y-scroll custom-scrollbar py-8 transition-all">
               <div className="w-full">
                 <div className="grid grid-cols-2 gap-x-2 text-center">
                   {history.map((sum, idx) => (
                     <React.Fragment key={idx}>
                       <div style={{ backgroundColor: bgColorByIndex(idx, history.length) }}
-                        className="text-4xl font-bold text-gray-900 py-3 border border-black select-none">R{idx + 1}</div>
+                        className="text-4xl font-bold text-gray-900 py-5 border border-black select-none">R{idx + 1}</div>
                       <div style={{ backgroundColor: bgColorByIndex(idx, history.length) }}
-                        className="text-6xl font-extrabold py-3 border border-black select-none">{sum}</div>
+                        className="text-6xl font-extrabold py-5 border border-black select-none">{sum}</div>
                     </React.Fragment>
                   ))}
                 </div>
               </div>
             </div>
           </div>
-          {/* 中間放大2倍的終端機動畫分數區（2/3寬） */}
+          {/* 中間大分數，間距縮小且分數極大化、區塊佔2/3寬 */}
           <div className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[480px]">
             <TerminalFlipScore num={score >= 0 ? score : 0} />
           </div>
-          {/* 右側本回合分數區，數字改斜體無斜切、水平 */}
+          {/* 右側本回合分數，格子直向排列且字體斜體 */}
           <div className="flex flex-col justify-center items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
-            <div className="flex flex-row items-center justify-center mb-16 w-full gap-x-6">
+            <div className="flex flex-col items-center justify-center mb-10 w-full gap-y-6">
               {[0, 1, 2].map(i => {
                 const highlight = displayedCurrThrows[i] === undefined &&
                   displayedCurrThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div key={i} className="flex flex-col items-center w-40">
-                    <div style={{width: '110px', height: '110px', borderRadius: 0}}
+                    <div style={{width: '120px', height: '110px', borderRadius: 0}}
                       className={`
                         flex items-center justify-center border-2 text-6xl font-extrabold italic
                         ${displayedCurrThrows[i] !== undefined
@@ -222,7 +215,7 @@ export default function Page01() {
                 );
               })}
             </div>
-            {/* ROUND CHANGE 按鈕（無圓角） */}
+            {/* ROUND CHANGE 按鈕：改換行箭頭icon */}
             <button
               className="w-28 h-28 flex items-center justify-center bg-green-700 hover:bg-green-600 shadow-lg text-white text-5xl p-0"
               style={{ borderRadius: 0 }}
@@ -230,10 +223,10 @@ export default function Page01() {
               disabled={currThrows.length === 0}
               title="ROUND CHANGE"
             >
-              <svg viewBox="0 0 48 48" fill="none" className="w-14 h-14">
-                <circle cx="24" cy="24" r="22" stroke="#fff" strokeWidth="3" fill="none" />
-                <path d="M34 24a10 10 0 1 0-10 10" stroke="#fff" strokeWidth="3" fill="none" />
-                <polygon points="33,28 41,28 41,36" fill="#fff" />
+              {/* 換行箭頭 SVG，比原本的更像回合遞移 */}
+              <svg viewBox="0 0 48 48" fill="none" className="w-20 h-20">
+                <polyline points="12,20 24,32 36,20" fill="none" stroke="#fff" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" />
+                <line x1="24" y1="8" x2="24" y2="32" stroke="#fff" strokeWidth="6" strokeLinecap="round"/>
               </svg>
             </button>
           </div>
