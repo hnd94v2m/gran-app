@@ -47,52 +47,61 @@ function TerminalFlipScore({ num, showBust }: { num: number, showBust: boolean }
   );
 }
 
-// Fat Bull空心/實心圓，中心點和圓邊有空隙
+// Fat Bull：中心點永遠和外圓同中心，外內皆置中
 function FatBullSwitch({ enabled, onChange }: { enabled: boolean, onChange: () => void }) {
   return (
-    <div onClick={onChange}
-      className="w-10 h-10 flex items-center justify-center cursor-pointer" tabIndex={0}>
-      <span className="inline-block w-8 h-8 rounded-full border-2 border-yellow-400 bg-transparent relative">
-        {enabled && <span className="absolute left-2 top-2 w-4 h-4 rounded-full bg-yellow-400" />}
+    <div onClick={onChange} className="w-10 h-10 flex items-center justify-center cursor-pointer" tabIndex={0}>
+      <span className="inline-block w-8 h-8 rounded-full border-2 border-yellow-400 bg-transparent relative flex items-center justify-center">
+        {/* 讓內圓永遠置中 —— 使用 flex */}
+        {enabled && (
+          <span
+            className="inline-block"
+            style={{
+              width: 18, height: 18,
+              borderRadius: "999px",
+              background: "#fde047" // tailwind yellow-400
+            }}
+          />
+        )}
       </span>
     </div>
   );
 }
 
-// MO/OO切換開關: 無英文，短橫塊滑軌，高度緊湊，內有2條止滑直線
+// MO/OO開關：短軌道，滑塊完全包覆於軌道，軌道高只稍大於滑塊
 function SwitchBox({ checked, onChange }: { checked: boolean, onChange: () => void }) {
+  // 開啟: checked==true==MO(左,藍灰背景)；關: checked==false==OO(右,暗色無色塊)
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onChange}
-      className="relative flex items-center w-20 h-8 bg-zinc-700 rounded-lg cursor-pointer select-none transition"
-      style={{ borderRadius: 7, minWidth: 80 }}
+      className="relative flex items-center w-14 h-7 bg-zinc-700 rounded-full cursor-pointer select-none transition"
+      style={{ borderRadius: 9999, minWidth: 56, minHeight: 28 }} // w-14 h-7
       aria-label="MO/OO 切換"
     >
       {/* 軌道底色 */}
-      <div className="absolute inset-0 rounded-lg bg-gray-200/10" />
+      <div className="absolute inset-0 rounded-full transition" style={{
+        background: checked
+          ? "rgba(93,156,236,0.23)" // 灰藍
+          : "rgba(32,34,42,0.25)"
+      }}/>
       {/* 滑塊 */}
       <div
-        className="absolute top-0.5 left-0.5 transition-transform duration-200"
+        className="absolute top-1 left-1 transition-transform duration-200"
         style={{
-          transform: checked ? "translateX(2.85rem)" : "translateX(0)"
+          transform: checked ? "translateX(0)" : "translateX(1.65rem)"
         }}
       >
-        <div className="w-8 h-7 bg-white rounded flex items-center shadow ring-2 ring-zinc-400 px-[1px]">
-          <div className="flex flex-row w-full h-full justify-center items-center gap-1">
-            <div className="h-5 w-[2.2px] bg-zinc-700 rounded"/>
-            <div className="h-5 w-[2.2px] bg-zinc-700 rounded"/>
+        <div className="w-6 h-5 bg-white rounded-md flex items-center shadow ring-2 ring-zinc-400 justify-center">
+          {/* 兩條直立防滑線 */}
+          <div className="flex flex-row h-3/4 gap-1">
+            <div className="w-[2px] h-4 bg-zinc-700 rounded"></div>
+            <div className="w-[2px] h-4 bg-zinc-700 rounded"></div>
           </div>
         </div>
       </div>
-      {/* 軌道浮動顏色（左淺藍MO，右深藍OO），不可出邊界 */}
-      <div style={{
-        position: "absolute", left: 0, top: 0, height: '100%', width: '100%',
-        pointerEvents: 'none', borderRadius: 7,
-        background: checked ? "linear-gradient(90deg,rgba(59,130,246,.22) 40%,transparent 98%)"
-                            : "linear-gradient(90deg,transparent 0,rgba(59,130,246,.22) 70%)"
-      }} />
+      {/* 無英文/標籤 */}
     </div>
   );
 }
@@ -108,9 +117,8 @@ export default function Page01() {
   const historyBox = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [fatBullEnabled, setFatBullEnabled] = useState(true);
-  const [moMode, setMoMode] = useState(true); // 預設MO(左)
+  const [moMode, setMoMode] = useState(true); // true=MO (左)
   const [showBust, setShowBust] = useState(false);
-
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
@@ -129,11 +137,10 @@ export default function Page01() {
     return false;
   }
   const handleConnect = async () => {
-    try {
-      const gb = await Granboard.ConnectToBoard();
-      setGranboard(gb);
-    } catch {}
+    try { const gb = await Granboard.ConnectToBoard(); setGranboard(gb); }
+    catch {}
   };
+
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
@@ -144,10 +151,7 @@ export default function Page01() {
         if (hitVal > left) {
           setShowBust(true);
           setTimeout(() => {
-            setShowBust(false);
-            setCurrThrows([]);
-            setLastRoundThrows([]);
-            setRound(r => r + 1);
+            setShowBust(false); setCurrThrows([]); setLastRoundThrows([]); setRound(r => r + 1);
           }, 1000);
           return [];
         }
@@ -156,10 +160,7 @@ export default function Page01() {
           if (!finishOk) {
             setShowBust(true);
             setTimeout(() => {
-              setShowBust(false);
-              setCurrThrows([]);
-              setLastRoundThrows([]);
-              setRound(r => r + 1);
+              setShowBust(false); setCurrThrows([]); setLastRoundThrows([]); setRound(r => r + 1);
             }, 1000);
             return [];
           }
@@ -167,10 +168,7 @@ export default function Page01() {
         if (prev.length >= 3) {
           endRoundWithThrows(prev);
           setTimeout(() => {
-            setCurrThrows([hitVal]);
-            setScore(s => s - hitVal);
-            setRound(r => r + 1);
-            setLastRoundThrows([]);
+            setCurrThrows([hitVal]); setScore(s => s - hitVal); setRound(r => r + 1); setLastRoundThrows([]);
           }, 0);
           return prev;
         }
@@ -191,14 +189,11 @@ export default function Page01() {
   };
   const endRound = () => {
     if (currThrows.length === 0) return;
-    endRoundWithThrows(currThrows);
-    setRound(r => r + 1);
+    endRoundWithThrows(currThrows); setRound(r => r + 1);
   };
   const retryCurrentRound = () => {
     const currSum = currThrows.reduce((a, b) => a + b, 0);
-    setScore(prev => prev + currSum);
-    setCurrThrows([]);
-    setMenuOpen(false);
+    setScore(prev => prev + currSum); setCurrThrows([]); setMenuOpen(false);
   };
   const resetGame = () => {
     setScore(START_SCORE); setRound(1); setHistory([]); setCurrThrows([]); setLastRoundThrows([]); setMenuOpen(false); setShowBust(false);
@@ -216,14 +211,11 @@ export default function Page01() {
     return `rgb(${grayValue},${grayValue},${grayValue})`;
   }
 
-  // 按鈕比分數格小(80px), 按鈕64px (w-16 h-16)
   const btnClass = "w-16 h-16 flex items-center justify-center shadow-lg p-0";
 
   return (
-    <div
-      className="bg-black text-white w-full min-h-screen flex items-center justify-center"
-      style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}
-    >
+    <div className="bg-black text-white w-full min-h-screen flex items-center justify-center"
+      style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}>
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
 
         {/* 右上角選單 */}
@@ -262,15 +254,13 @@ export default function Page01() {
           )}
         </div>
 
-        {/* 右下角回合切換按鈕，比玩家區高 */}
+        {/* 右下角回合切換 */}
         <div className="absolute bottom-[7.5rem] right-4 z-50">
-          <button
-            className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`}
+          <button className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`}
             style={{ borderRadius: 0 }}
             onClick={endRound}
             disabled={currThrows.length === 0}
-            title="ROUND CHANGE"
-          >
+            title="ROUND CHANGE">
             <svg className="w-9 h-9" viewBox="0 0 40 40" fill="none">
               <polyline points="12,10 12,28 28,28" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
               <polygon points="28,28 21,23 21,33" fill="#fff" />
@@ -279,7 +269,7 @@ export default function Page01() {
         </div>
 
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
-          {/* 左側回合分數區 */}
+          {/* 左側回合分數區（底不超過玩家列） */}
           <div className="flex flex-col justify-start items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
             <div ref={historyBox}
               className="rounded-2xl shadow-inner flex flex-col w-full max-h-[calc(100vh-120px)] overflow-y-scroll custom-scrollbar py-8 transition-all">
@@ -301,7 +291,7 @@ export default function Page01() {
           <div className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[520px]">
             <TerminalFlipScore num={score >= 0 ? score : 0} showBust={showBust} />
           </div>
-          {/* 右側本回合分數/按鈕，格子上移，間距窄 */}
+          {/* 右側分數格，上移，間距窄 */}
           <div className="flex flex-col justify-end items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3 pb-16 pt-8">
             <div className="flex flex-col items-center w-full gap-y-3 mb-7 mt-14">
               {[0, 1, 2].map(i => {
@@ -310,16 +300,15 @@ export default function Page01() {
                 return (
                   <div key={i} className="flex flex-col items-center w-40">
                     <div style={{ width: "120px", height: "108px", borderRadius: 0 }}
-                      className={`
-                        flex items-center justify-center border-2 text-6xl font-extrabold italic
-                        ${displayedCurrThrows[i] !== undefined
-                          ? "border-yellow-400 text-yellow-300 bg-zinc-900"
-                          : highlight
-                            ? "border-green-400 text-white bg-green-800 animate-pulse"
-                            : "border-zinc-600 text-zinc-500 bg-zinc-900"
-                        }
-                        transition-all select-none
-                      `}>
+                      className={
+                        `flex items-center justify-center border-2 text-6xl font-extrabold italic ${
+                          displayedCurrThrows[i] !== undefined
+                            ? "border-yellow-400 text-yellow-300 bg-zinc-900"
+                            : highlight
+                              ? "border-green-400 text-white bg-green-800 animate-pulse"
+                              : "border-zinc-600 text-zinc-500 bg-zinc-900"
+                        } transition-all select-none`
+                      }>
                       {displayedCurrThrows[i] !== undefined ? displayedCurrThrows[i] : "--"}
                     </div>
                   </div>
@@ -342,7 +331,6 @@ export default function Page01() {
             </span>
           </div>
         </div>
-
         <style jsx>{`
           .custom-scrollbar::-webkit-scrollbar { width: 18px; }
           .custom-scrollbar::-webkit-scrollbar-thumb {
