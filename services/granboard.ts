@@ -1,4 +1,9 @@
+// ==== 型別 fallback（讓 TypeScript happy，不影響功能）====
 type BluetoothRemoteGATTCharacteristic = any;
+interface Navigator {
+  bluetooth?: any;
+}
+// ==== END fallback ====
 
 import { CreateSegment, Segment, SegmentID } from "./boardinfo";
 
@@ -146,7 +151,7 @@ export class Granboard {
     const segmentUID = new Uint8Array(
       this.bluetoothConnection.value.buffer
     ).join("-");
-    const segmentID = (SEGMENT_MAPPING as any)[segmentUID]; // There is probably a type safe way without resulting to "any"
+    const segmentID = (SEGMENT_MAPPING as any)[segmentUID];
 
     if (segmentID !== undefined) {
       console.log(segmentID);
