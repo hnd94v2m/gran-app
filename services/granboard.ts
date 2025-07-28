@@ -1,8 +1,11 @@
-// ==== 型別 fallback（讓 TypeScript happy，不影響功能）====
-type BluetoothRemoteGATTCharacteristic = any;
-interface Navigator {
-  bluetooth?: any;
+// ==== 型別 fallback（讓 TypeScript happy，不影響功能，也解決 Vercel 編譯問題）====
+declare global {
+  interface Navigator {
+    bluetooth?: any;
+  }
+  type BluetoothRemoteGATTCharacteristic = any;
 }
+export {};
 // ==== END fallback ====
 
 import { CreateSegment, Segment, SegmentID } from "./boardinfo";
