@@ -14,7 +14,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "incremental": true,
-    "types": ["node", "jest"],      // 依你的有無可自行加
+    "types": ["node"],      // 依你的有無可自行加
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
