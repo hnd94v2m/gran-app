@@ -121,7 +121,7 @@ export class Granboard {
     // Find the characteristic that supports the notify property. That is the one that executes when
     // a dartboard segment is hit
     let boardCharacteristic = (await service.getCharacteristics()).find(
-      (characteristic) => characteristic.properties.notify
+      (characteristic: any) => characteristic.properties.notify
     );
 
     if (!boardCharacteristic) {
