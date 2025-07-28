@@ -6,9 +6,8 @@ import { Segment } from "@/services/boardinfo";
 
 const START_SCORE = 501;
 
-// 中間大分數：終端機翻頁動畫數字組件
+// 終端機翻頁動畫數字
 function TerminalFlipDigit({ digit }: { digit: string }) {
-  // 用狀態輪播 0~9 快速變，最後停在 digit
   const [current, setCurrent] = useState('0');
   useEffect(() => {
     let count = 0;
@@ -26,19 +25,18 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
     }, 50);
     return () => clearInterval(interval);
   }, [digit]);
-
   return (
-    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-bold px-4 py-6 rounded-sm shadow-md">
+    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-bold px-7 py-10 rounded-sm shadow-lg text-[9rem]">
       {current}
     </span>
   );
 }
 
-// 整組三位數動畫分數
+// 三位動畫分數
 function TerminalFlipScore({ num }: { num: number }) {
   const padded = num.toString().padStart(3, '0');
   return (
-    <div className="flex space-x-3 justify-center">
+    <div className="flex space-x-6 justify-center items-center">
       {padded.split('').map((d, i) => (
         <TerminalFlipDigit digit={d} key={i} />
       ))}
@@ -48,7 +46,6 @@ function TerminalFlipScore({ num }: { num: number }) {
 
 export default function Page01() {
   const router = useRouter();
-
   const [granboard, setGranboard] = useState<Granboard>();
   const [score, setScore] = useState(START_SCORE);
   const [round, setRound] = useState(1);
@@ -61,10 +58,7 @@ export default function Page01() {
   const [avatar] = useState("👨‍💻");
   const historyBox = useRef<HTMLDivElement>(null);
 
-  // 歷史分數自動滾到底
-  useEffect(() => {
-    if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight;
-  }, [history]);
+  useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
   useEffect(() => { handleConnect(); }, []);
 
   function getAdjustedScore(segmentValue: number): number {
@@ -128,7 +122,6 @@ export default function Page01() {
     return `rgb(${grayValue},${grayValue},${grayValue})`;
   }
 
-  // 按鈕樣式
   const squareBtnClass =
     "w-28 h-28 flex items-center justify-center bg-green-700 hover:bg-green-600 shadow-lg text-white text-5xl p-0";
   const menuBtnClass =
@@ -165,8 +158,7 @@ export default function Page01() {
         </div>
 
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
-
-          {/* 歷史回合分數區塊 */}
+          {/* 歷史回合分數區塊（窄欄） */}
           <div className="flex flex-col justify-center items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
             <div ref={historyBox} className="rounded-2xl shadow-inner flex flex-col h-[32rem] max-h-[87vh] w-full overflow-y-scroll custom-scrollbar py-7">
               <div className="w-full">
@@ -183,13 +175,11 @@ export default function Page01() {
               </div>
             </div>
           </div>
-
-          {/* 中間大分數區，用終端機風格翻頁動畫 */}
+          {/* ===中間大分數，限制寬度2/3=== */}
           <div className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[480px]">
             <TerminalFlipScore num={score >= 0 ? score : 0} />
           </div>
-
-          {/* 本回合分數區 (上下排列)，格子不斜切，文字斜切 */}
+          {/* 右側本回合分數（文字斜切）與 round change 按鈕 */}
           <div className="flex flex-col justify-center items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
             <div className="flex flex-col items-center justify-center mb-16 w-full scale-[1.25] gap-y-3">
               {[0, 1, 2].map(i => {
@@ -211,7 +201,7 @@ export default function Page01() {
                       <span style={{
                         display: "block",
                         fontStyle: "italic",
-                        transform: "skew(20deg, 10deg)", // 文字斜切
+                        transform: "skew(20deg, 10deg)",
                         fontWeight: 900,
                         paddingTop: '12px',
                         paddingRight: '10px',
@@ -260,7 +250,8 @@ export default function Page01() {
             background-clip: content-box;
           }
           .terminal-digit {
-            font-feature-settings: "tnum"; /* 等寬數字 */
+            font-feature-settings: "tnum";
+            border-radius: 0.25rem;
           }
           .text-gradient-metal {
             background: linear-gradient(135deg, #f7f7f7, #a9a9a9 20%, #fff 50%, #c9ac36 70%, #8a6d1b 85%, #f7f7f7 95%);
@@ -275,4 +266,3 @@ export default function Page01() {
     </div>
   );
 }
-
