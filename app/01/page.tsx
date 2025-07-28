@@ -4,46 +4,34 @@ import { useRouter } from 'next/navigation';
 import { Granboard } from "@/services/granboard";
 import { Segment, SegmentType } from "@/services/boardinfo";
 
-// 起始分數
 const START_SCORE = 501;
 
-// 終端機動畫大字數字元件
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState('0');
   useEffect(() => {
-    let count = 0;
-    let running = true;
+    let count = 0, running = true;
     const interval = setInterval(() => {
       if (!running) return;
       count++;
-      if (count > 9) {
-        running = false;
-        setCurrent(digit);
-        clearInterval(interval);
-      } else {
-        setCurrent(Math.floor(Math.random() * 10).toString());
-      }
+      if (count > 9) { running = false; setCurrent(digit); clearInterval(interval); }
+      else { setCurrent(Math.floor(Math.random() * 10).toString()); }
     }, 50);
     return () => clearInterval(interval);
   }, [digit]);
   return (
-    <span
-      className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold px-8 py-10 rounded shadow-2xl text-[20rem] leading-none drop-shadow-xl flex items-end"
-      style={{ height: '24rem', letterSpacing: '-0.08em' }}
-    >
+    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold px-8 py-10 rounded shadow-2xl text-[20rem] leading-none drop-shadow-xl flex items-end"
+      style={{ height: '24rem', letterSpacing: '-0.08em' }}>
       {current}
     </span>
   );
 }
 
-function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }) {
+function TerminalFlipScore({ num, showBust }: { num: number, showBust: boolean }) {
   if (showBust) {
     return (
       <div className="flex flex-row items-end justify-center">
-        <span
-          className="terminal-digit font-mono text-red-500 bg-black font-black text-[20rem] px-8 py-10 rounded shadow-2xl flex items-center"
-          style={{ height: '24rem', letterSpacing: '-0.03em' }}
-        >
+        <span className="terminal-digit font-mono text-red-500 bg-black font-black text-[20rem] px-8 py-10 rounded shadow-2xl flex items-center"
+          style={{ height: '24rem', letterSpacing: '-0.03em' }}>
           BUST
         </span>
       </div>
@@ -51,76 +39,56 @@ function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }
   }
   const padded = num.toString().padStart(3, '0');
   return (
-    <div
-      className="flex flex-row justify-center items-end"
-      style={{ gap: '0.10em' }}
-    >
-      {padded.split("").map((d, i) => (
+    <div className="flex flex-row justify-center items-end" style={{ gap: '0.10em' }}>
+      {padded.split('').map((d, i) => (
         <TerminalFlipDigit digit={d} key={i} />
       ))}
     </div>
   );
 }
 
-// MO/OO 切換開關（純圖示、無文字）
-function SwitchBox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+// Fat Bull Switch（圓點與圓邊有間隙）
+function FatBullSwitch({ enabled, onChange }: { enabled: boolean, onChange: () => void }) {
+  return (
+    <div onClick={onChange} className="w-10 h-10 flex items-center justify-center cursor-pointer" tabIndex={0}>
+      <span className="inline-block w-8 h-8 rounded-full border-2 border-yellow-400 bg-transparent relative">
+        {enabled && <span className="absolute left-1 top-1 w-6 h-6 rounded-full bg-yellow-400" />}
+      </span>
+    </div>
+  );
+}
+
+// MO/OO custom switch（橫長形滑動區塊，滑塊為橫長白色長方形，三條直線防滑）
+function SwitchBox({ checked, onChange }: { checked: boolean, onChange: () => void }) {
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onChange}
-      className="relative flex items-center w-20 h-11 bg-zinc-700 rounded-lg cursor-pointer select-none transition"
+      className="relative flex items-center w-24 h-11 bg-zinc-700 rounded-lg cursor-pointer select-none transition"
       style={{ borderRadius: 8 }}
-      aria-label="MO/OO 切換"
-    >
-      {/* 軌道底色 */}
-      <div
-        className={`absolute inset-0 rounded-lg transition`}
-        style={{ backgroundColor: checked ? "rgba(59, 130, 246, 0.3)" : "rgba(212, 212, 212, 0.2)" }}
-      />
-      {/* 可滑動的橫長方形滑塊 */}
-      <div
-        className={`absolute top-1 left-1 transition-transform duration-200`}
-        style={{
-          transform: checked ? "translateX(3.8rem)" : "translateX(0)"
-        }}
-      >
-        <div className="switch-rectangle w-12 h-7 bg-white rounded-md flex flex-col justify-center shadow ring-2 ring-zinc-400">
-          {/* 止滑條 (三條垂直線) */}
-          <div className="flex justify-between px-2">
-            <span className="w-[2px] h-5 bg-zinc-700 rounded" />
-            <span className="w-[2px] h-5 bg-zinc-700 rounded" />
-            <span className="w-[2px] h-5 bg-zinc-700 rounded" />
+      aria-label="MO/OO 切換">
+      {/* 軌道底色效果 */}
+      <div className={`absolute inset-0 rounded-lg transition`} style={{ backgroundColor: checked ? "rgba(59,130,246,0.18)" : "rgba(180,192,212,0.06)" }} />
+      {/* 滑塊區：橫長方型移動於軌道內 */}
+      <div className={`absolute top-1 left-1 transition-transform duration-200`}
+        style={{ transform: checked ? "translateX(3.7rem)" : "translateX(0)" }}>
+        <div className="switch-rect w-12 h-8 bg-white rounded flex items-center shadow ring-2 ring-zinc-400 px-2">
+          {/* 三條防滑直線 */}
+          <div className="flex flex-col gap-1 mx-auto">
+            <div className="h-6 w-[2px] bg-zinc-700 rounded"/>
+            <div className="h-6 w-[2px] bg-zinc-700 rounded"/>
+            <div className="h-6 w-[2px] bg-zinc-700 rounded"/>
           </div>
         </div>
       </div>
-      {/* 左右icon為 MO (左) 和 OO(右) 的直覺位置, 文字去掉 */}
-      {/* 你可自行加圖標，這裡暫留空 */}
-    </div>
-  );
-}
-
-// Fat Bull 開關（空心/實心圓）
-function FatBullSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
-  return (
-    <div
-      onClick={onChange}
-      className="w-10 h-10 flex items-center justify-center cursor-pointer"
-      tabIndex={0}
-      aria-label={`Fat Bull 功能 ${enabled ? "開啟" : "關閉"}`}
-    >
-      {enabled ? (
-        <span className="inline-block w-8 h-8 rounded-full border-2 border-yellow-400 bg-yellow-400" />
-      ) : (
-        <span className="inline-block w-8 h-8 rounded-full border-2 border-yellow-400 bg-transparent" />
-      )}
+      {/* 無任何文字，直接靠直覺左右位置 */}
     </div>
   );
 }
 
 export default function Page01() {
   const router = useRouter();
-
   const [granboard, setGranboard] = useState<Granboard>();
   const [score, setScore] = useState(START_SCORE);
   const [round, setRound] = useState(1);
@@ -130,8 +98,8 @@ export default function Page01() {
   const historyBox = useRef<HTMLDivElement>(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [fatBullEnabled, setFatBullEnabled] = useState(true); // 預設開
-  const [moMode, setMoMode] = useState(true); // true=MO，false=OO
+  const [fatBullEnabled, setFatBullEnabled] = useState(true);
+  const [moMode, setMoMode] = useState(true);
   const [showBust, setShowBust] = useState(false);
 
   const [playerName] = useState("Player 1");
@@ -140,17 +108,12 @@ export default function Page01() {
   useEffect(() => {
     if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight;
   }, [history]);
-
-  useEffect(() => {
-    handleConnect();
-    // eslint-disable-next-line
-  }, []);
+  useEffect(() => { handleConnect(); }, []);
 
   function getAdjustedScore(val: number) {
     if (fatBullEnabled && (val === 25 || val === 50)) return 50;
     return val;
   }
-
   function canFinish(segment: Segment, fatBull: boolean, mo: boolean) {
     if (!mo) return true;
     if (segment.Type === SegmentType.Double || segment.Type === SegmentType.Triple) return true;
@@ -158,35 +121,29 @@ export default function Page01() {
     if (!fatBull && segment.Value === 50) return true;
     return false;
   }
-
   const handleConnect = async () => {
     try {
       const gb = await Granboard.ConnectToBoard();
       setGranboard(gb);
     } catch {}
   };
-
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
-      setCurrThrows((prev) => {
-        // 用目前 score 扣掉 prev 鏢數總和，計算剩餘
+      setCurrThrows(prev => {
         const left = score - prev.reduce((a, b) => a + b, 0);
         const hitVal = getAdjustedScore(segment.Value);
 
-        // 正確爆鏢判斷
         if (hitVal > left) {
           setShowBust(true);
           setTimeout(() => {
             setShowBust(false);
             setCurrThrows([]);
             setLastRoundThrows([]);
-            setRound((r) => r + 1);
+            setRound(r => r + 1);
           }, 1000);
           return [];
         }
-
-        // 若結標時判斷 MO/OO
         if (left - hitVal === 0) {
           const finishOk = canFinish(segment, fatBullEnabled, moMode);
           if (!finishOk) {
@@ -195,28 +152,24 @@ export default function Page01() {
               setShowBust(false);
               setCurrThrows([]);
               setLastRoundThrows([]);
-              setRound((r) => r + 1);
+              setRound(r => r + 1);
             }, 1000);
             return [];
           }
         }
-
-        // 若已三鏢，下一鏢直接進新回合且刷新格子
         if (prev.length >= 3) {
           endRoundWithThrows(prev);
           setTimeout(() => {
             setCurrThrows([hitVal]);
-            setScore((s) => s - hitVal);
-            setRound((r) => r + 1);
+            setScore(s => s - hitVal);
+            setRound(r => r + 1);
             setLastRoundThrows([]);
           }, 0);
           return prev;
         }
-
         const newThrows = [...prev, hitVal];
-        setScore((s) => s - hitVal);
+        setScore(s => s - hitVal);
         if (newThrows.length === 3) endRoundWithThrows(newThrows);
-
         return newThrows;
       });
     };
@@ -225,24 +178,21 @@ export default function Page01() {
 
   const endRoundWithThrows = (throwsToAdd: number[]) => {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
-    setHistory((prev) => [...prev, sum]);
+    setHistory(prev => [...prev, sum]);
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
   };
-
   const endRound = () => {
     if (currThrows.length === 0) return;
     endRoundWithThrows(currThrows);
-    setRound((r) => r + 1);
+    setRound(r => r + 1);
   };
-
   const retryCurrentRound = () => {
     const currSum = currThrows.reduce((a, b) => a + b, 0);
-    setScore((prev) => prev + currSum);
+    setScore(prev => prev + currSum);
     setCurrThrows([]);
     setMenuOpen(false);
   };
-
   const resetGame = () => {
     setScore(START_SCORE);
     setRound(1);
@@ -252,26 +202,18 @@ export default function Page01() {
     setMenuOpen(false);
     setShowBust(false);
   };
-
-  const goHome = () => {
-    router.push("/");
-    setMenuOpen(false);
-  };
+  const goHome = () => { router.push("/"); setMenuOpen(false); };
 
   const displayedCurrThrows = lastRoundThrows.length > 0 && currThrows.length === 0 ? lastRoundThrows : currThrows;
   const currentTotal = score - displayedCurrThrows.reduce((a, b) => a + b, 0);
-
   function bgColorByIndex(index: number, length: number): string {
     if (length === 1) return "#f8f8f8";
-    const minGray = 32,
-      maxGray = 248;
+    const minGray = 32, maxGray = 248;
     const ratio = index / (length - 1);
     const grayValue = Math.round(minGray + (maxGray - minGray) * ratio);
     return `rgb(${grayValue},${grayValue},${grayValue})`;
   }
-
-  const btnClass =
-    "w-20 h-20 flex items-center justify-center shadow-lg p-0";
+  const btnClass = "w-20 h-20 flex items-center justify-center shadow-lg p-0";
 
   return (
     <div
@@ -285,177 +227,94 @@ export default function Page01() {
       }}
     >
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
-
-        {/* 右上角選單按鈕（靠右且留空隙） */}
-        <div className="absolute top-6 right-6 z-50">
+        {/* 右上角選單按鈕 */}
+        <div className="absolute top-4 right-5 z-50">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className={`${btnClass} bg-zinc-800 hover:bg-zinc-700 text-white`}
             style={{ borderRadius: 0 }}
             aria-label="選單切換"
           >
-            <svg
-              width="30"
-              height="30"
-              viewBox="0 0 20 20"
-              fill="none"
-              className="w-12 h-12"
-            >
+            <svg width="30" height="30" viewBox="0 0 20 20" fill="none" className="w-12 h-12">
               <rect y="3" width="20" height="2.6" rx="1" fill="currentColor" />
-              <rect
-                y="8.5"
-                width="20"
-                height="2.6"
-                rx="1"
-                fill="currentColor"
-              />
+              <rect y="8.5" width="20" height="2.6" rx="1" fill="currentColor" />
               <rect y="14" width="20" height="2.6" rx="1" fill="currentColor" />
             </svg>
           </button>
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-72 bg-zinc-900 border border-zinc-700 rounded shadow-lg flex flex-col select-none z-[999]">
-              <button
-                className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700"
-                onClick={() => {
-                  handleConnect();
-                  setMenuOpen(false);
-                }}
-              >
-                重新連接
-              </button>
-              <button
-                className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700"
-                onClick={() => {
-                  resetGame();
-                }}
-              >
-                重新開始
-              </button>
-              <button
-                className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700"
-                onClick={() => {
-                  retryCurrentRound();
-                }}
-              >
-                重投
-              </button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={() => { handleConnect(); setMenuOpen(false); }}>重新連接</button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={resetGame}>重新開始</button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={retryCurrentRound}>重投</button>
               <div className="flex justify-between items-center px-8 py-5 text-2xl hover:bg-zinc-700 focus:bg-zinc-700 select-none">
                 <span>Fat Bull</span>
-                <FatBullSwitch
-                  enabled={fatBullEnabled}
-                  onChange={() => setFatBullEnabled(!fatBullEnabled)}
-                />
+                <FatBullSwitch enabled={fatBullEnabled} onChange={() => setFatBullEnabled(!fatBullEnabled)} />
               </div>
               <div className="flex justify-between items-center px-8 py-5 text-2xl hover:bg-zinc-700 focus:bg-zinc-700 select-none">
                 <span>MO/OO</span>
                 <SwitchBox checked={moMode} onChange={() => setMoMode(!moMode)} />
               </div>
-              <button
-                className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700"
-                onClick={() => {
-                  goHome();
-                }}
-              >
-                返回首頁
-              </button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700" onClick={goHome}>返回首頁</button>
             </div>
           )}
         </div>
-
-        {/* 右下角回合切換按鈕（比玩家條高度略高） */}
-        <div className="absolute bottom-[7.5rem] right-6 z-50">
-          <button
-            className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`}
+        {/* 右下回合切換 */}
+        <div className="absolute bottom-[7.5rem] right-5 z-50">
+          <button className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`}
             style={{ borderRadius: 0 }}
             onClick={endRound}
             disabled={currThrows.length === 0}
             title="ROUND CHANGE"
           >
-            {/* 換行箭頭icon */}
-            <svg
-              className="w-10 h-10"
-              viewBox="0 0 40 40"
-              fill="none"
-            >
-              <polyline
-                points="12,10 12,28 28,28"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="5"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
+            <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
+              <polyline points="12,10 12,28 28,28" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
               <polygon points="28,28 21,23 21,33" fill="#fff" />
             </svg>
           </button>
         </div>
-
         <div className="flex-1 flex flex-row items-stretch w-full h-full">
-          {/* 左側回合分數 （底部避免蓋過玩家欄） */}
+          {/* 左側回合分數 */}
           <div className="flex flex-col justify-start items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3">
-            <div
-              ref={historyBox}
-              className="rounded-2xl shadow-inner flex flex-col w-full max-h-[calc(100vh-120px)] overflow-y-scroll custom-scrollbar py-8 transition-all"
-              // 120px大約是下方玩家欄高度加間距，避免被遮蔽
+            <div ref={historyBox}
+                className="rounded-2xl shadow-inner flex flex-col w-full max-h-[calc(100vh-128px)] overflow-y-scroll custom-scrollbar py-8 transition-all"
             >
               <div className="w-full">
                 <div className="grid grid-cols-2 gap-x-2 text-center">
                   {history.map((sum, idx) => (
                     <React.Fragment key={idx}>
-                      <div
-                        style={{ backgroundColor: bgColorByIndex(idx, history.length) }}
-                        className="text-4xl font-bold text-gray-900 py-5 border border-black select-none"
-                      >
-                        R{idx + 1}
-                      </div>
-                      <div
-                        style={{ backgroundColor: bgColorByIndex(idx, history.length) }}
-                        className="text-6xl font-extrabold py-5 border border-black select-none"
-                      >
-                        {sum}
-                      </div>
+                      <div style={{ backgroundColor: bgColorByIndex(idx, history.length) }}
+                        className="text-4xl font-bold text-gray-900 py-5 border border-black select-none">R{idx + 1}</div>
+                      <div style={{ backgroundColor: bgColorByIndex(idx, history.length) }}
+                        className="text-6xl font-extrabold py-5 border border-black select-none">{sum}</div>
                     </React.Fragment>
                   ))}
                 </div>
               </div>
             </div>
           </div>
-
-          {/* 中間最大分數區，間距極窄 */}
-          <div
-            className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[520px]"
-          >
+          {/* 中間大分數 */}
+          <div className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[520px]">
             <TerminalFlipScore num={score >= 0 ? score : 0} showBust={showBust} />
           </div>
-
-          {/* 右側本回合分數，垂直對齊、下移，間距縮小 */}
-          <div
-            className="flex flex-col justify-end items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3 pb-16 pt-8"
-          >
-            <div className="flex flex-col items-center w-full gap-y-3 mb-8 mt-16">
-              {[0, 1, 2].map((i) => {
-                const highlight =
-                  displayedCurrThrows[i] === undefined &&
-                  displayedCurrThrows.findIndex((v) => v === undefined) === i;
+          {/* 右側本回合分數，接近頂部、間距更窄 */}
+          <div className="flex flex-col justify-start items-center flex-[1_1_0%] min-w-[220px] max-w-[340px] px-3 pt-8 pb-16">
+            <div className="flex flex-col items-center w-full gap-y-3 mt-8 mb-9">
+              {[0, 1, 2].map(i => {
+                const highlight = displayedCurrThrows[i] === undefined &&
+                  displayedCurrThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div key={i} className="flex flex-col items-center w-40">
-                    <div
-                      style={{ width: "120px", height: "108px", borderRadius: 0 }}
-                      className={`
-                        flex items-center justify-center border-2 text-6xl font-extrabold italic
-                        ${
+                    <div style={{ width: "120px", height: "108px", borderRadius: 0 }}
+                      className={
+                        `flex items-center justify-center border-2 text-6xl font-extrabold italic ${
                           displayedCurrThrows[i] !== undefined
                             ? "border-yellow-400 text-yellow-300 bg-zinc-900"
                             : highlight
                             ? "border-green-400 text-white bg-green-800 animate-pulse"
                             : "border-zinc-600 text-zinc-500 bg-zinc-900"
-                        }
-                        transition-all select-none
-                      `}
-                    >
-                      {displayedCurrThrows[i] !== undefined
-                        ? displayedCurrThrows[i]
-                        : "--"}
+                        } transition-all select-none`
+                      }>
+                      {displayedCurrThrows[i] !== undefined ? displayedCurrThrows[i] : "--"}
                     </div>
                   </div>
                 );
@@ -463,18 +322,17 @@ export default function Page01() {
             </div>
           </div>
         </div>
-
-        {/* 下方玩家條，加底色分隔線 */}
-        <div className="flex items-center justify-center gap-10 w-full py-8 bg-gradient-to-t from-black to-zinc-900 border-t border-zinc-700">
-          <span className="inline-block w-28 h-28 rounded-full bg-zinc-700 text-[5rem] flex items-center justify-center select-none">
-            {avatar}
-          </span>
-          <span className="text-4xl font-bold select-none">{playerName}</span>
-          <span className="ml-10 px-8 py-4 rounded bg-zinc-800 text-green-400 tracking-widest font-mono text-5xl font-black select-none">
-            {currentTotal >= 0 ? currentTotal : 0}
-          </span>
+        {/* 下方玩家條－帶區塊分隔 */}
+        <div className="relative">
+          <div className="absolute left-0 right-0 top-0 h-5 bg-zinc-800" />
+          <div className="flex items-center justify-center gap-10 w-full py-8 bg-gradient-to-t from-black to-zinc-900 z-10 relative border-t border-zinc-700">
+            <span className="inline-block w-28 h-28 rounded-full bg-zinc-700 text-[5rem] flex items-center justify-center select-none">{avatar}</span>
+            <span className="text-4xl font-bold select-none">{playerName}</span>
+            <span className="ml-10 px-8 py-4 rounded bg-zinc-800 text-green-400 tracking-widest font-mono text-5xl font-black select-none">
+              {currentTotal >= 0 ? currentTotal : 0}
+            </span>
+          </div>
         </div>
-
         <style jsx>{`
           .custom-scrollbar::-webkit-scrollbar {
             width: 18px;
