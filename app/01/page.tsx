@@ -3,6 +3,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { Granboard } from "@/services/granboard";
 import { Segment, SegmentType } from "@/services/boardinfo";
+const START_SCORE = 501;
 
 // 終端機動畫大數字
 function TerminalFlipDigit({ digit }: { digit: string }) {
