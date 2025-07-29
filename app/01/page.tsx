@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID: number = 84; // 請依你靶子測得 Segment.ID
+const RED_BUTTON_SEGMENT_ID: number = 84; // 紅色按鈕ID：請根據你實測結果
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -162,7 +162,6 @@ export default function Page01() {
       if (hitLock.current) return;
       if (roundEnded.current) return;
 
-      // 型別安全比對
       if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
         console.log('偵測到紅色按鈕！');
         if (currThrows.length > 0) {
