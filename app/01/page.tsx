@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID = 84; // <<< 請改成實測你紅色按鍵的 Segment.ID
+const RED_BUTTON_SEGMENT_ID: number = 84; // 已用 number 強型別修正
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -114,7 +114,6 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // 分數同步顯示 log
   useEffect(() => {
     console.log("畫面分數即時顯示：", score);
   }, [score]);
@@ -163,8 +162,8 @@ export default function Page01() {
       if (hitLock.current) return;
       if (roundEnded.current) return;
 
-      // 支援紅色按鈕「手動結束回合」
-      if (segment.ID === RED_BUTTON_SEGMENT_ID) {
+      // 支援紅色按鈕「手動結束回合」：Segment.ID 型別正確比較
+      if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
         console.log('偵測到紅色按鈕！');
         if (currThrows.length > 0) {
           roundEnded.current = true;
@@ -234,7 +233,6 @@ export default function Page01() {
   };
 
   const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
-
   let displayedCurrThrows = lastRoundThrows.length > 0 && currThrows.length === 0 ? lastRoundThrows : currThrows;
   if (bustRoundNum && (history.length + 1) === bustRoundNum + 1 && currThrows.length === 0)
     displayedCurrThrows = [];
@@ -297,15 +295,15 @@ export default function Page01() {
           <div className="flex flex-col flex-[1_1_0%] min-w-[130px] max-w-[300px] px-2 pt-0" style={{ height: "100%" }}>
             <div className="w-full h-[440px] overflow-y-scroll custom-scrollbar" ref={historyBox}>
               <div className="overflow-hidden border border-black rounded-none">
-                {history.slice(-MAX_HISTORY_ROWS).map((scoreVal, idx) => {
-                  const color = bgColorByIndex(idx, history.slice(-MAX_HISTORY_ROWS).length);
+                {visibleHistory.map((scoreVal, idx) => {
+                  const color = bgColorByIndex(idx, visibleHistory.length);
                   return (
                     <div className="flex" key={`row_${idx}`} style={{ height: rowHeight }}>
                       <div style={{
                         width: col1Width, height: rowHeight, background: color, borderLeft: "none", borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderRight: "1px solid #222"
                       }}
                         className="text-[2rem] font-bold text-gray-900 border-b border-black flex items-center justify-center">
-                        R{history.length - history.slice(-MAX_HISTORY_ROWS).length + idx + 1}
+                        R{history.length - visibleHistory.length + idx + 1}
                       </div>
                       <div
                         style={{ width: col2Width, height: rowHeight, background: color, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
@@ -327,7 +325,6 @@ export default function Page01() {
                 alignItems: "center",
                 minWidth: "min(100vw,1200px)"
               }}>
-                {/* 分數顯示區直接抓 score，畫面與 log 永遠同步 */}
                 {console.log("畫面主分顯示：", score)}
                 <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust} />
               </div>
