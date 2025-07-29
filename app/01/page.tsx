@@ -7,9 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-
-// 假設 Granboard 實體紅色按鈕為 Segment.ID = 99
-const RED_BUTTON_SEGMENT_ID = 99;
+const RED_BUTTON_SEGMENT_ID = 99; // <<< 請改成實測你紅色按鍵的 Segment.ID
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -116,12 +114,11 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // UI 分數顯示驗證
+  // 分數同步顯示 log
   useEffect(() => {
     console.log("畫面分數即時顯示：", score);
   }, [score]);
 
-  // 計分規則與判斷
   function isLegalFinish(segment: Segment, fatBull: boolean, mo: boolean) {
     if (!mo) return true;
     if (segment.Type === SegmentType.Double) return true;
@@ -153,11 +150,8 @@ export default function Page01() {
     }, 500);
   }
 
-  useEffect(() => {
-    if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight;
-  }, [history]);
+  useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
   useEffect(() => { handleConnect(); }, []);
-
   const handleConnect = async () => {
     try { const gb = await Granboard.ConnectToBoard(); setGranboard(gb); }
     catch { }
@@ -165,14 +159,13 @@ export default function Page01() {
 
   useEffect(() => {
     if (!granboard) return;
-
     granboard.segmentHitCallback = (segment: Segment) => {
       if (hitLock.current) return;
       if (roundEnded.current) return;
 
-      // 偵測紅色按鈕 segment 直接做回合結束
+      // 支援紅色按鈕「手動結束回合」
       if (segment.ID === RED_BUTTON_SEGMENT_ID) {
-        console.log('偵測到紅色實體按鈕觸發，強制手動結束回合');
+        console.log('偵測到紅色按鈕！');
         if (currThrows.length > 0) {
           roundEnded.current = true;
           endRoundWithThrows(currThrows);
@@ -182,7 +175,7 @@ export default function Page01() {
 
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
-      hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600); // 拉長 debounce
+      hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600);
 
       const hitVal = getAdjustedScore(segment.Value);
 
@@ -221,7 +214,6 @@ export default function Page01() {
         return newThrows;
       });
     };
-
     return () => {
       granboard.segmentHitCallback = undefined;
       if (hitTimer.current) clearTimeout(hitTimer.current);
@@ -335,6 +327,8 @@ export default function Page01() {
                 alignItems: "center",
                 minWidth: "min(100vw,1200px)"
               }}>
+                {/* 分數顯示區直接抓 score，畫面與 log 永遠同步 */}
+                {console.log("畫面主分顯示：", score)}
                 <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust} />
               </div>
             </div>
@@ -342,7 +336,7 @@ export default function Page01() {
               <span className="inline-block w-24 h-24 rounded-full bg-zinc-700 text-[4.5rem] flex items-center justify-center select-none">{avatar}</span>
               <span className="text-3xl font-bold select-none">{playerName}</span>
               <span className="ml-8 px-6 py-3 rounded bg-zinc-800 text-green-400 tracking-widest font-mono text-4xl font-black select-none">
-                {currentTotal >= 0 ? currentTotal : 0}
+                {score}
               </span>
             </div>
           </div>
