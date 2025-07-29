@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID: number = 84; // 你紅色按鈕log出來的ID
+const RED_BUTTON_SEGMENT_ID: number = 84; // 由你的 LOG 得到的 Segment.ID
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -134,7 +134,7 @@ export default function Page01() {
     granboard.segmentHitCallback = (segment: Segment) => {
       if (hitLock.current) return;
       if (roundEnded.current) return;
-      // 這裡用 Number(segment.ID) 型別轉換
+      // 型別安全比對
       if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
         if (currThrows.length > 0) {
           roundEnded.current = true;
@@ -216,8 +216,7 @@ export default function Page01() {
     <div className="bg-black text-white w-full min-h-screen flex flex-col"
       style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}>
       <main className="flex flex-col h-full w-full flex-1 relative">
-        {/* ...（略）Menu / Button / UI ... */}
-        {/* ----重點內容與渲染邏輯請見你原始的完整 UI 實作，只需保證callback那行型別修正------ */}
+        {/* ... 省略 UI，內容直接維持你原本完整版本 ... */}
       </main>
     </div>
   );
