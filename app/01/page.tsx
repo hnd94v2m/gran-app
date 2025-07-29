@@ -8,6 +8,9 @@ const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
 
+// 假設 Granboard 實體紅色按鈕為 Segment.ID = 99
+const RED_BUTTON_SEGMENT_ID = 99;
+
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
   useEffect(() => {
@@ -109,11 +112,16 @@ export default function Page01() {
   const hitLock = useRef(false);
   const roundEnded = useRef(false);
   const hitTimer = useRef<NodeJS.Timeout | null>(null);
-
   const historyBox = useRef<HTMLDivElement>(null);
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
+  // UI 分數顯示驗證
+  useEffect(() => {
+    console.log("畫面分數即時顯示：", score);
+  }, [score]);
+
+  // 計分規則與判斷
   function isLegalFinish(segment: Segment, fatBull: boolean, mo: boolean) {
     if (!mo) return true;
     if (segment.Type === SegmentType.Double) return true;
@@ -139,7 +147,6 @@ export default function Page01() {
       return newScore;
     });
     roundEnded.current = true;
-    // 用 500ms 延遲保證 UI 更新並等待 setScore
     setTimeout(() => {
       console.log('回合結束，釋放下一回合鎖定');
       roundEnded.current = false;
@@ -149,7 +156,6 @@ export default function Page01() {
   useEffect(() => {
     if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight;
   }, [history]);
-
   useEffect(() => { handleConnect(); }, []);
 
   const handleConnect = async () => {
@@ -164,9 +170,19 @@ export default function Page01() {
       if (hitLock.current) return;
       if (roundEnded.current) return;
 
+      // 偵測紅色按鈕 segment 直接做回合結束
+      if (segment.ID === RED_BUTTON_SEGMENT_ID) {
+        console.log('偵測到紅色實體按鈕觸發，強制手動結束回合');
+        if (currThrows.length > 0) {
+          roundEnded.current = true;
+          endRoundWithThrows(currThrows);
+        }
+        return;
+      }
+
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
-      hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600); // 600ms debounce
+      hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600); // 拉長 debounce
 
       const hitVal = getAdjustedScore(segment.Value);
 
@@ -211,7 +227,7 @@ export default function Page01() {
       if (hitTimer.current) clearTimeout(hitTimer.current);
     };
     // eslint-disable-next-line
-  }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history]);
+  }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history, currThrows]);
 
   const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; };
   const resetGame = () => {
@@ -289,15 +305,15 @@ export default function Page01() {
           <div className="flex flex-col flex-[1_1_0%] min-w-[130px] max-w-[300px] px-2 pt-0" style={{ height: "100%" }}>
             <div className="w-full h-[440px] overflow-y-scroll custom-scrollbar" ref={historyBox}>
               <div className="overflow-hidden border border-black rounded-none">
-                {visibleHistory.map((scoreVal, idx) => {
-                  const color = bgColorByIndex(idx, visibleHistory.length);
+                {history.slice(-MAX_HISTORY_ROWS).map((scoreVal, idx) => {
+                  const color = bgColorByIndex(idx, history.slice(-MAX_HISTORY_ROWS).length);
                   return (
                     <div className="flex" key={`row_${idx}`} style={{ height: rowHeight }}>
                       <div style={{
                         width: col1Width, height: rowHeight, background: color, borderLeft: "none", borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderRight: "1px solid #222"
                       }}
                         className="text-[2rem] font-bold text-gray-900 border-b border-black flex items-center justify-center">
-                        R{history.length - visibleHistory.length + idx + 1}
+                        R{history.length - history.slice(-MAX_HISTORY_ROWS).length + idx + 1}
                       </div>
                       <div
                         style={{ width: col2Width, height: rowHeight, background: color, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
