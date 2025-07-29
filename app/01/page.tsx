@@ -113,7 +113,7 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // [修正] 必須提前宣告這個 function
+  // *** 這裡是關鍵：把 endRoundWithThrows 提升到最上方 ***
   const endRoundWithThrows = (throwsToAdd: number[]) => {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(pv => [...pv, sum]);
@@ -167,7 +167,6 @@ export default function Page01() {
           setRound(r => r + 1);
           return [];
         }
-        // 三鏢自動下一回合
         if (throwCount >= 3) {
           endRoundWithThrows(prev);
           setTimeout(() => {
@@ -238,8 +237,16 @@ export default function Page01() {
   };
 
   return (
-    <div className="bg-black text-white w-full min-h-screen flex items-center justify-center"
-      style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}>
+    <div
+      className="bg-black text-white w-full min-h-screen flex items-center justify-center"
+      style={{
+        aspectRatio: "16/9",
+        minHeight: "100vh",
+        minWidth: "100vw",
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
         {/* 右上角選單 */}
         <div className="absolute top-4 right-4 z-50">
@@ -335,8 +342,8 @@ export default function Page01() {
                           displayedCurrThrows[i] !== undefined
                             ? "border-yellow-400 text-yellow-300 bg-zinc-900"
                             : highlight
-                              ? "border-green-400 text-white bg-green-800 animate-pulse"
-                              : "border-zinc-600 text-zinc-500 bg-zinc-900"
+                            ? "border-green-400 text-white bg-green-800 animate-pulse"
+                            : "border-zinc-600 text-zinc-500 bg-zinc-900"
                         } transition-all select-none`
                       }>
                       {displayedCurrThrows[i] !== undefined ? displayedCurrThrows[i] : "--"}
