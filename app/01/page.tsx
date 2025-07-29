@@ -14,30 +14,24 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
     const interval = setInterval(() => {
       if (!running) return;
       count++;
-      if (count > 9) {
-        running = false;
-        setCurrent(digit);
-        clearInterval(interval);
-      } else {
-        setCurrent(Math.floor(Math.random() * 10).toString());
-      }
+      if (count > 9) { running = false; setCurrent(digit); clearInterval(interval); }
+      else { setCurrent(Math.floor(Math.random() * 10).toString()); }
     }, 50);
     return () => clearInterval(interval);
   }, [digit]);
   return (
-    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold px-5 py-5 rounded shadow-2xl text-[11rem] leading-none drop-shadow-xl flex items-end"
-      style={{ height: "14rem", letterSpacing: "-0.08em" }}>
+    <span className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold px-9 py-10 rounded shadow-2xl text-[20vw] leading-none drop-shadow-xl flex items-end"
+      style={{ height: "23vw", minHeight: "13rem", letterSpacing: "-0.08em" }}>
       {current}
     </span>
   );
 }
-
 function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }) {
   if (showBust) {
     return (
-      <div className="flex flex-row items-end justify-center">
-        <span className="terminal-digit font-mono text-red-500 bg-black font-black text-[11rem] px-5 py-5 rounded shadow-2xl flex items-center"
-          style={{ height: "14rem", letterSpacing: "-0.03em" }}>
+      <div className="flex flex-row items-end justify-center w-full">
+        <span className="terminal-digit font-mono text-red-500 bg-black font-black text-[20vw] px-9 py-10 rounded shadow-2xl flex items-center"
+          style={{ height: "23vw", minHeight: "13rem", letterSpacing: "-0.03em" }}>
           BUST
         </span>
       </div>
@@ -45,14 +39,13 @@ function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }
   }
   const padded = num.toString().padStart(3, "0");
   return (
-    <div className="flex flex-row justify-center items-end" style={{ gap: "0.04em" }}>
+    <div className="flex flex-row justify-center items-end w-full" style={{ gap: "0.06em" }}>
       {padded.split("").map((d, i) => (
         <TerminalFlipDigit digit={d} key={i} />
       ))}
     </div>
   );
 }
-
 function FatBullSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
   return (
     <div onClick={onChange} className="w-10 h-10 flex items-center justify-center cursor-pointer" tabIndex={0}>
@@ -69,9 +62,7 @@ function SwitchBox({ checked, onChange }: { checked: boolean; onChange: () => vo
     <div role="button" tabIndex={0}
       onClick={onChange}
       className="relative flex items-center w-14 h-7 bg-zinc-700 rounded-full cursor-pointer select-none transition"
-      style={{ borderRadius: 9999, minWidth: 56, minHeight: 28 }}
-      aria-label="MO/OO 切換"
-    >
+      style={{ borderRadius: 9999, minWidth: 56, minHeight: 28 }} aria-label="MO/OO 切換">
       <div className="absolute inset-0 rounded-full transition"
         style={{
           background: checked ?
@@ -80,10 +71,7 @@ function SwitchBox({ checked, onChange }: { checked: boolean; onChange: () => vo
       />
       <div
         className="absolute top-1 left-1 transition-transform duration-200"
-        style={{
-          transform: checked ? "translateX(0)" : "translateX(1.65rem)"
-        }}
-      >
+        style={{ transform: checked ? "translateX(0)" : "translateX(1.65rem)" }}>
         <div className="w-6 h-5 bg-white rounded-md flex items-center shadow ring-2 ring-zinc-400 justify-center">
           <div className="flex flex-row h-3/4 gap-1">
             <div className="w-[2px] h-4 bg-zinc-700 rounded"/>
@@ -116,18 +104,18 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // 只計算一次命中：200ms 內 second hit 視為雜訊（防 double callback）
+  // <<<<<<<< YOUR LOGIC: begin
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(pv => [...pv, sum]);
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
   }
-
   useEffect(() => {
     if (historyBox.current)
       historyBox.current.scrollTop = historyBox.current.scrollHeight;
   }, [history]);
+
   useEffect(() => { handleConnect(); }, []);
 
   function getAdjustedScore(val: number) {
@@ -146,13 +134,10 @@ export default function Page01() {
     catch {}
   };
 
-  // 綁定 callback 時保證唯一、單一
   useEffect(() => {
     if (!granboard) return;
-    // 移除舊 callback，保證沒有累計
     granboard.segmentHitCallback = undefined;
     granboard.segmentHitCallback = (segment: Segment) => {
-      // 防短時間多次觸發 (debounce/dedupe)，200ms 內只取第一次
       const now = Date.now();
       if (now - lastHitTime < 200) return;
       setLastHitTime(now);
@@ -161,6 +146,7 @@ export default function Page01() {
         const throwCount = prev.length;
         const left = score - prev.reduce((a, b) => a + b, 0);
         const hitVal = getAdjustedScore(segment.Value);
+
         if (throwCount === 0) setLastValidScore(score);
 
         const bustNow =
@@ -196,6 +182,7 @@ export default function Page01() {
     };
     // eslint-disable-next-line
   }, [granboard, fatBullEnabled, moMode, score, lastValidScore, round, bustRoundNum, lastHitTime]);
+  // <<<<<<<< YOUR LOGIC: end
 
   const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
 
@@ -203,7 +190,7 @@ export default function Page01() {
   if (bustRoundNum && round === bustRoundNum + 1 && currThrows.length === 0) {
     displayedCurrThrows = [];
   }
-
+  // 統一所有分數顯示來源
   const currentTotal = score - displayedCurrThrows.reduce((a, b) => a + b, 0);
 
   function bgColorByIndex(idx: number, len: number): string {
@@ -215,11 +202,12 @@ export default function Page01() {
       : `rgb(${Math.max(gray - 10, min)},${Math.max(gray - 10, min)},${Math.max(gray - 10, min)})`;
   }
 
-  // 新比例（兩欄長寬等比例拉長，高度降低）
-  const col1Width = "88px";
-  const col2Width = "143px";
-  const rowHeight = "48px";
+  // 放大 UI 整體設定
+  const col1Width = "110px";
+  const col2Width = "175px";
+  const rowHeight = "72px";
   const btnClass = "w-16 h-16 flex items-center justify-center shadow-lg p-0";
+  const marksBoxTop = '4.5rem'; // 距離頂端
 
   const retryCurrentRound = () => {
     const currSum = currThrows.reduce((a, b) => a + b, 0);
@@ -301,11 +289,12 @@ export default function Page01() {
             </svg>
           </button>
         </div>
-        <div className="flex-1 flex flex-row w-full h-full items-stretch">
-          {/* 左側回合分數（高度/寬度縮放、分數右對齊） */}
-          <div className="flex flex-col flex-[1_1_0%] min-w-[160px] max-w-[260px] px-2 select-none">
-            <div className="flex flex-col w-full h-full justify-start items-center pt-24">
-              <div ref={historyBox} className="w-full max-w-full h-[270px] overflow-y-scroll rounded-none shadow-inner custom-scrollbar" style={{ margin: 0 }}>
+        <div className="flex w-full h-full items-start">
+          {/* 左側回合分數 */}
+          <div className="flex flex-col flex-[1_1_0%] min-w-[180px] max-w-[340px] px-3 pt-[calc(4.5rem+16px)]">
+            <div className="flex flex-col w-full h-full justify-start items-center">
+              <div ref={historyBox} className="w-full max-w-full overflow-y-scroll rounded-none shadow-inner custom-scrollbar h-[455px] mt-0"
+                style={{ margin: 0, minHeight: '360px', maxHeight: '455px', overflowY: 'auto' }}>
                 <div className="overflow-hidden border border-black rounded-none" style={{ margin: 0 }}>
                   {visibleHistory.map((scoreVal, idx) => {
                     const color = bgColorByIndex(idx, visibleHistory.length);
@@ -315,18 +304,20 @@ export default function Page01() {
                           width: col1Width,
                           height: rowHeight,
                           background: color,
-                          borderLeft: "none", borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderRight: "1px solid #222"
+                          borderLeft: "none",
+                          borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderRight: "1px solid #222"
                         }}
-                          className="text-[1.8rem] font-bold text-gray-900 border-b border-black flex items-center justify-center"
+                          className="text-[2.6rem] font-bold text-gray-900 border-b border-black flex items-center justify-center"
                         >R{history.length - visibleHistory.length + idx + 1}</div>
                         <div
                           style={{
                             width: col2Width,
                             height: rowHeight,
                             background: color,
-                            borderTopRightRadius: 0, borderBottomRightRadius: 0,
+                            borderTopRightRadius: 0,
+                            borderBottomRightRadius: 0,
                           }}
-                          className="text-[2.3rem] font-extrabold border-b border-black flex items-center justify-end pr-6"
+                          className="text-[3.5rem] font-extrabold border-b border-black flex items-center justify-end pr-8"
                         >{scoreVal}</div>
                       </div>
                     );
@@ -335,27 +326,29 @@ export default function Page01() {
               </div>
             </div>
           </div>
-          {/* 中間大分數 */}
-          <div className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[380px]">
-            <TerminalFlipScore num={score >= 0 ? score : 0} showBust={bust} />
+          {/* 中間大分數，最大化 */}
+          <div className="flex flex-col justify-start items-center flex-[4_4_0%] max-w-[68vw] min-h-[440px] pt-[calc(4.5rem+16px)]">
+            <div className="flex w-full items-center justify-center" style={{ minHeight: "14rem", }}>
+              <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust} />
+            </div>
           </div>
-          {/* 右側三鏢分數格/靠右正中，與選單齊右 */}
-          <div className="flex flex-col items-end justify-end flex-[1_1_0%] min-w-[180px] max-w-[320px] px-3 pb-16 pt-8">
-            <div className="flex flex-col items-end w-full gap-y-3 mb-7 mt-14">
+          {/* 右側三鏢格，與選單對齊、上移 */}
+          <div className="flex flex-col items-end justify-end flex-[1_1_0%] min-w-[200px] max-w-[380px] px-5 pb-16 pt-[calc(4.5rem+16px)]">
+            <div className="flex flex-col items-end w-full gap-y-5 mb-7 mt-0">
               {[0, 1, 2].map(i => {
                 const highlight = displayedCurrThrows[i] === undefined && displayedCurrThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div key={i} className="flex flex-col items-end w-full">
-                    <div style={{ width: "120px", height: "80px", borderRadius: 0 }}
+                    <div style={{ width: "145px", height: "95px", borderRadius: 0 }}
                       className={
-                        `flex items-center justify-center border-2 text-6xl font-extrabold italic ${
+                        `flex items-center justify-center border-2 text-7xl font-extrabold italic ${
                           displayedCurrThrows[i] !== undefined
                             ? "border-yellow-400 text-yellow-300 bg-zinc-900"
                             : highlight
                               ? "border-green-400 text-white bg-green-800 animate-pulse"
                               : "border-zinc-600 text-zinc-500 bg-zinc-900"
-                        } select-none mx-0`
-                      }>
+                        } select-none mx-0`}
+                    >
                       <span className="w-full text-center">{displayedCurrThrows[i] !== undefined ? displayedCurrThrows[i] : "--"}</span>
                     </div>
                   </div>
