@@ -111,7 +111,15 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // 固定高度溢位自動向下捲
+  // ========== 你要補上這個！==========
+  const endRoundWithThrows = (throwsToAdd: number[]) => {
+    const sum = throwsToAdd.reduce((a, b) => a + b, 0);
+    setHistory(pv => [...pv, sum]);
+    setLastRoundThrows(throwsToAdd);
+    setCurrThrows([]);
+  };
+  // ========== 上面那段是修正點 ==========
+
   useEffect(() => {
     if (historyBox.current)
       historyBox.current.scrollTop = historyBox.current.scrollHeight;
@@ -134,7 +142,6 @@ export default function Page01() {
     catch {}
   };
 
-  // flying dart callback
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
@@ -143,7 +150,6 @@ export default function Page01() {
         const left = score - prev.reduce((a, b) => a + b, 0);
         const hitVal = getAdjustedScore(segment.Value);
 
-        // 本回合首標時，用於 bust rollback
         if (throwCount === 0) setLastValidScore(score);
 
         const bustNow =
@@ -180,10 +186,8 @@ export default function Page01() {
     // eslint-disable-next-line
   }, [granboard, currThrows, lastRoundThrows, fatBullEnabled, moMode, history, score, lastValidScore, round, bustRoundNum]);
 
-  // only keep MAX_HISTORY_ROWS in visible area
   const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
 
-  // bust結束→等新回合有丟標才刷新
   let displayedCurrThrows = lastRoundThrows.length > 0 && currThrows.length === 0 ? lastRoundThrows : currThrows;
   if (bustRoundNum && round === bustRoundNum + 1 && currThrows.length === 0) {
     displayedCurrThrows = [];
@@ -192,24 +196,32 @@ export default function Page01() {
   const currentTotal = score - displayedCurrThrows.reduce((a, b) => a + b, 0);
 
   function bgColorByIndex(idx: number, len: number): string {
-    // 5行上下各拉一倍色階
     const min = 32, max = 228;
     const ratio = len <= 1 ? 0 : idx / (len - 1);
     const gray = Math.round(min + (max - min) * ratio);
     return idx % 2 === 0 ? `rgb(${gray},${gray},${gray})` : `rgb(${Math.max(gray-10, min)},${Math.max(gray-10, min)},${Math.max(gray-10, min)})`;
   }
-  // 欄寬：
-  const col1Width = "64px";    // 回合欄
-  const col2Width = "110px";   // 分數欄
-
-  // 按鈕比分數格小(80px), 按鈕64px (w-16 h-16)
+  const col1Width = "64px";
+  const col2Width = "110px";
   const btnClass = "w-16 h-16 flex items-center justify-center shadow-lg p-0";
+
+  const retryCurrentRound = () => {
+    const currSum = currThrows.reduce((a, b) => a + b, 0);
+    setScore(prev => prev + currSum); setCurrThrows([]); setMenuOpen(false);
+  };
+  const resetGame = () => {
+    setScore(START_SCORE); setRound(1); setHistory([]); setCurrThrows([]); setLastRoundThrows([]); setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null);
+  };
+  const goHome = () => { router.push("/"); setMenuOpen(false); };
+  const endRound = () => {
+    if (currThrows.length === 0) return;
+    endRoundWithThrows(currThrows); setRound(r => r + 1);
+  };
 
   return (
     <div className="bg-black text-white w-full min-h-screen flex items-center justify-center"
       style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}>
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
-
         {/* 右上角選單 */}
         <div className="absolute top-4 right-4 z-50">
           <button onClick={() => setMenuOpen(!menuOpen)} className={`${btnClass} bg-zinc-800 hover:bg-zinc-700 text-white`} style={{ borderRadius: 0 }} aria-label="選單切換">
@@ -232,11 +244,11 @@ export default function Page01() {
                 <span>MO/OO</span>
                 <SwitchBox checked={moMode} onChange={() => setMoMode(!moMode)} />
               </div>
-              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700" onClick={goHome}>返回首頁</button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700"
+                onClick={goHome}>返回首頁</button>
             </div>
           )}
         </div>
-
         {/* 右下角回合切換按鈕，比玩家區高 */}
         <div className="absolute bottom-[7.5rem] right-4 z-50">
           <button className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`} style={{ borderRadius: 0 }} onClick={endRound} disabled={currThrows.length === 0} title="ROUND CHANGE">
@@ -246,7 +258,6 @@ export default function Page01() {
             </svg>
           </button>
         </div>
-
         <div className="flex-1 flex flex-row w-full h-full items-stretch">
           {/* 左側回合分數（表格頂端比選單按鈕還低） */}
           <div className="flex flex-col flex-[1_1_0%] min-w-[140px] max-w-[240px] px-2 select-none">
@@ -255,7 +266,6 @@ export default function Page01() {
               <div ref={historyBox} className="w-full max-w-full h-[450px] overflow-y-scroll rounded-none shadow-inner custom-scrollbar" style={{ margin: 0 }}>
                 <div className="overflow-hidden border border-black rounded-none" style={{ margin: 0 }}>
                   {visibleHistory.map((scoreVal, idx) => {
-                    // 顏色交錯
                     const color = bgColorByIndex(idx, visibleHistory.length);
                     return (
                       <div className="flex" key={`row_${idx}`}>
@@ -285,7 +295,6 @@ export default function Page01() {
               </div>
             </div>
           </div>
-
           {/* 中間大分數 */}
           <div className="flex flex-col items-center justify-center flex-[2_2_0%] max-w-[66vw] min-w-0 min-h-[520px]">
             <TerminalFlipScore num={score >= 0 ? score : 0} showBust={bust} />
@@ -315,7 +324,6 @@ export default function Page01() {
             </div>
           </div>
         </div>
-
         {/* 下方玩家條＋分隔色塊 */}
         <div className="flex flex-col w-full">
           <div className="w-full h-3 bg-gradient-to-t from-yellow-600/80 to-black/0" />
