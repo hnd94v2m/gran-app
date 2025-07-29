@@ -15,22 +15,22 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
     const interval = setInterval(() => {
       if (!running) return;
       count++;
-      if (count > 6) { running = false; setCurrent(digit); clearInterval(interval); }
+      if (count > 4) { running = false; setCurrent(digit); clearInterval(interval); }
       else setCurrent(Math.floor(Math.random() * 10).toString());
-    }, 50);
+    }, 48);
     return () => clearInterval(interval);
   }, [digit]);
   return (
     <span
       className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold flex items-end justify-center"
       style={{
-        fontStretch: "semi-expanded",
-        fontSize: "clamp(5rem, 11vw, 12rem)",
+        fontStretch: "expanded",
+        fontSize: "clamp(5rem, 12vw, 13rem)",
         lineHeight: 1.05,
-        height: "clamp(7rem, 12vw, 14rem)",
-        minWidth: "2.25em",
-        padding: "0.15em 0.19em",
-        letterSpacing: "-0.09em"
+        height: "clamp(7rem, 13vw, 15rem)",
+        minWidth: "2.05em",
+        padding: "0.13em 0.1em",
+        letterSpacing: "-0.21em"
       }}
     >{current}</span>
   );
@@ -42,12 +42,12 @@ function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }
         <span
           className="terminal-digit font-mono text-red-500 bg-black font-black flex items-center justify-center"
           style={{
-            fontSize: "clamp(5rem,11vw,12rem)",
+            fontSize: "clamp(5rem,12vw,13rem)",
             lineHeight: 1.05,
-            height: "clamp(7rem,12vw,14rem)",
-            minWidth: "9.2em",
-            letterSpacing: "-0.05em",
-            padding: "0.18em 0.19em"
+            height: "clamp(7rem,13vw,15rem)",
+            minWidth: "7.2em",
+            letterSpacing: "-0.12em",
+            padding: "0.16em 0.1em"
           }}
         >BUST</span>
       </div>
@@ -55,7 +55,7 @@ function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }
   }
   const padded = num.toString().padStart(3, "0");
   return (
-    <div className="flex flex-row justify-center items-end w-full h-full" style={{ gap: "0.01em" }}>
+    <div className="flex flex-row justify-center items-end w-full h-full" style={{ gap: "0.005em" }}>
       {padded.split("").map((d, i) => (
         <TerminalFlipDigit digit={d} key={i} />
       ))}
@@ -142,10 +142,12 @@ export default function Page01() {
 
   useEffect(() => {
     if (!granboard) return;
+    let timer: NodeJS.Timeout | null = null;
     granboard.segmentHitCallback = (segment: Segment) => {
       if (hitLock.current) return;
       hitLock.current = true;
-      setTimeout(() => { hitLock.current = false; }, 200);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { hitLock.current = false; }, 380);
 
       setCurrThrows(prev => {
         const throwCount = prev.length;
@@ -154,7 +156,6 @@ export default function Page01() {
 
         if (throwCount === 0) setLastValidScore(score);
         const left = score - throwsSum;
-
         const isBust = (
           hitVal > left ||
           (left - hitVal === 1) ||
@@ -168,7 +169,6 @@ export default function Page01() {
           setBustRoundNum(history.length + 1);
           return [];
         }
-
         if (throwCount === 2) {
           endRoundWithThrows([...prev, hitVal]);
           return [];
@@ -176,7 +176,10 @@ export default function Page01() {
         return [...prev, hitVal];
       });
     };
-    return () => { granboard.segmentHitCallback = undefined; };
+    return () => {
+      granboard.segmentHitCallback = undefined;
+      if (timer) clearTimeout(timer);
+    };
     // eslint-disable-next-line
   }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history]);
 
@@ -198,6 +201,7 @@ export default function Page01() {
   const threeMarkBoxWidth = "135px";
   const threeMarkBoxHeight = "80px";
   const btnClass = "w-16 h-16 flex items-center justify-center shadow-lg p-0";
+  const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
 
   const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); };
   const resetGame = () => {
@@ -207,13 +211,10 @@ export default function Page01() {
   const goHome = () => { router.push("/"); setMenuOpen(false); };
   const endRound = () => { if (currThrows.length === 0) return; endRoundWithThrows(currThrows); };
 
-  const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
-
   return (
     <div className="bg-black text-white w-full min-h-screen flex flex-col"
       style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}>
       <main className="flex flex-col h-full w-full flex-1 relative">
-        {/* 選單 */}
         <div className="absolute top-4 right-4 z-50">
           <button onClick={() => setMenuOpen(!menuOpen)}
             className={`${btnClass} bg-zinc-800 hover:bg-zinc-700 text-white`}
@@ -226,7 +227,8 @@ export default function Page01() {
           </button>
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-72 bg-zinc-900 border border-zinc-700 rounded shadow-lg flex flex-col select-none z-[999]">
-              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={() => { handleConnect(); setMenuOpen(false); }}>重新連接</button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700"
+                onClick={() => { handleConnect(); setMenuOpen(false); }}>重新連接</button>
               <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={resetGame}>重新開始</button>
               <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={retryCurrentRound}>重投</button>
               <div className="flex justify-between items-center px-8 py-6 text-2xl hover:bg-zinc-700"><span>Fat Bull</span>
@@ -235,14 +237,13 @@ export default function Page01() {
               <div className="flex justify-between items-center px-8 py-6 text-2xl hover:bg-zinc-700"><span>MO/OO</span>
                 <SwitchBox checked={moMode} onChange={() => setMoMode(!moMode)} />
               </div>
-              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700"
-                onClick={goHome}>返回首頁</button>
+              <button className="px-8 py-4 text-2xl text-left border-t border-zinc-700 hover:bg-zinc-700" onClick={goHome}>返回首頁</button>
             </div>
           )}
         </div>
-        {/* 右下回合送出 */}
         <div className="absolute bottom-[7.5rem] right-4 z-50">
-          <button className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`} style={{ borderRadius: 0 }} onClick={endRound} disabled={currThrows.length === 0}>
+          <button className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`}
+            style={{ borderRadius: 0 }} onClick={endRound} disabled={currThrows.length === 0}>
             <svg className="w-9 h-9" viewBox="0 0 40 40" fill="none">
               <polyline points="12,10 12,28 28,28" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
               <polygon points="28,28 21,23 21,33" fill="#fff" />
@@ -278,7 +279,15 @@ export default function Page01() {
           {/* 中-大分數(2/3寬) */}
           <div className="flex flex-col flex-[2_2_0%] max-w-[66vw] w-full items-center justify-between h-full pt-0">
             <div className="flex flex-1 items-center justify-center w-full h-full" style={{ maxWidth: '66vw', minHeight: '12rem' }}>
-              <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust} />
+              <div style={{
+                width: "100%",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minWidth: "min(100vw,1200px)"
+              }}>
+                <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust} />
+              </div>
             </div>
             <div className="flex items-center justify-center gap-10 w-full py-8 bg-gradient-to-t from-black via-zinc-950/80">
               <span className="inline-block w-24 h-24 rounded-full bg-zinc-700 text-[4.5rem] flex items-center justify-center select-none">{avatar}</span>
