@@ -114,7 +114,7 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // *** 1. 把 endRoundWithThrows 提到最前面 ***
+  // *** 1. function 宣告方式（不是 const/arrow） ***
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(pv => [...pv, sum]);
@@ -162,7 +162,8 @@ export default function Page01() {
           setBust(true);
           setTimeout(() => { setBust(false); }, 2000);
           setScore(lastValidScore); // rollback
-          setCurrThrows([]); setLastRoundThrows([]);
+          setCurrThrows([]);
+          setLastRoundThrows([]);
           setBustRoundNum(round);
           setRound(r => r + 1);
           return [];
