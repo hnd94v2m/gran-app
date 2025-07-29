@@ -26,10 +26,10 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
       style={{
         fontStretch: "semi-expanded",
         fontSize: "clamp(5rem, 11vw, 12rem)",
-        lineHeight: 1,
-        height: "clamp(6rem, 10vw, 12rem)",
-        minWidth: "3.3em",
-        padding: "0.2em 0.32em",
+        lineHeight: 1.05,
+        height: "clamp(7rem, 12vw, 14rem)",
+        minWidth: "2.25em",
+        padding: "0.15em 0.19em",
         letterSpacing: "-0.09em"
       }}
     >{current}</span>
@@ -40,14 +40,14 @@ function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }
     return (
       <div className="flex flex-row items-end justify-center w-full h-full">
         <span
-          className="terminal-digit font-mono text-red-500 bg-black font-black flex items-center"
+          className="terminal-digit font-mono text-red-500 bg-black font-black flex items-center justify-center"
           style={{
             fontSize: "clamp(5rem,11vw,12rem)",
-            lineHeight: 1,
-            height: "clamp(6rem,10vw,12rem)",
-            minWidth: "11.5em",
-            letterSpacing: "-0.04em",
-            padding: "0.2em 0.32em"
+            lineHeight: 1.05,
+            height: "clamp(7rem,12vw,14rem)",
+            minWidth: "9.2em",
+            letterSpacing: "-0.05em",
+            padding: "0.18em 0.19em"
           }}
         >BUST</span>
       </div>
@@ -55,7 +55,7 @@ function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }
   }
   const padded = num.toString().padStart(3, "0");
   return (
-    <div className="flex flex-row justify-center items-end w-full h-full" style={{ gap: "0.04em" }}>
+    <div className="flex flex-row justify-center items-end w-full h-full" style={{ gap: "0.01em" }}>
       {padded.split("").map((d, i) => (
         <TerminalFlipDigit digit={d} key={i} />
       ))}
@@ -111,7 +111,6 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  /** ------- Darts 計分與爆鏢邏輯 ------- **/
   function isLegalFinish(segment: Segment, fatBull: boolean, mo: boolean) {
     if (!mo) return true;
     if (segment.Type === SegmentType.Double) return true;
@@ -146,7 +145,7 @@ export default function Page01() {
     granboard.segmentHitCallback = (segment: Segment) => {
       if (hitLock.current) return;
       hitLock.current = true;
-      setTimeout(() => { hitLock.current = false; }, 220);
+      setTimeout(() => { hitLock.current = false; }, 200);
 
       setCurrThrows(prev => {
         const throwCount = prev.length;
@@ -161,10 +160,9 @@ export default function Page01() {
           (left - hitVal === 1) ||
           (left - hitVal === 0 && !isLegalFinish(segment, fatBullEnabled, moMode))
         );
-
         if (isBust) {
           setBust(true);
-          setTimeout(() => { setBust(false); }, 1400);
+          setTimeout(() => { setBust(false); }, 1200);
           setScore(lastValidScore);
           setCurrThrows([]); setLastRoundThrows([]);
           setBustRoundNum(history.length + 1);
@@ -182,31 +180,25 @@ export default function Page01() {
     // eslint-disable-next-line
   }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history]);
 
-  /** ------- 分數顯示處理 ------- **/
   let displayedCurrThrows = lastRoundThrows.length > 0 && currThrows.length === 0 ? lastRoundThrows : currThrows;
   if (bustRoundNum && (history.length + 1) === bustRoundNum + 1 && currThrows.length === 0)
     displayedCurrThrows = [];
   const currentTotal = score - displayedCurrThrows.reduce((a, b) => a + b, 0);
-  const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
 
   function bgColorByIndex(idx: number, len: number): string {
     const min = 32, max = 228;
     const ratio = len <= 1 ? 0 : idx / (len - 1);
     const gray = Math.round(min + (max - min) * ratio);
-    return idx % 2 === 0
-      ? `rgb(${gray},${gray},${gray})`
-      : `rgb(${Math.max(gray - 10, min)},${Math.max(gray - 10, min)},${Math.max(gray - 10, min)})`;
+    return idx % 2 === 0 ? `rgb(${gray},${gray},${gray})` : `rgb(${Math.max(gray - 10, min)},${Math.max(gray - 10, min)},${Math.max(gray - 10, min)})`;
   }
 
-  // UI尺寸（左回合表、右三格)
-  const rowHeight = "4.4rem";
-  const col1Width = "76px";
-  const col2Width = "124px";
-  const threeMarkBoxWidth = "145px";
-  const threeMarkBoxHeight = "84px";
+  const col1Width = "100px";
+  const col2Width = "137px";
+  const rowHeight = "52px";
+  const threeMarkBoxWidth = "135px";
+  const threeMarkBoxHeight = "80px";
   const btnClass = "w-16 h-16 flex items-center justify-center shadow-lg p-0";
 
-  // 菜單與遊戲控制
   const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); };
   const resetGame = () => {
     setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
@@ -215,59 +207,66 @@ export default function Page01() {
   const goHome = () => { router.push("/"); setMenuOpen(false); };
   const endRound = () => { if (currThrows.length === 0) return; endRoundWithThrows(currThrows); };
 
+  const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
+
   return (
     <div className="bg-black text-white w-full min-h-screen flex flex-col"
-      style={{aspectRatio:"16/9",minHeight:"100vh",minWidth:"100vw",overflow:"hidden",position:"relative"}}>
+      style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}>
       <main className="flex flex-col h-full w-full flex-1 relative">
         {/* 選單 */}
         <div className="absolute top-4 right-4 z-50">
-          <button onClick={()=>setMenuOpen(!menuOpen)} className={`${btnClass} bg-zinc-800 hover:bg-zinc-700 text-white`} aria-label="選單切換">
+          <button onClick={() => setMenuOpen(!menuOpen)}
+            className={`${btnClass} bg-zinc-800 hover:bg-zinc-700 text-white`}
+            aria-label="選單切換">
             <svg width="28" height="28" viewBox="0 0 20 20" fill="none" className="w-10 h-10">
-              <rect y="3" width="20" height="2.6" rx="1" fill="currentColor"/>
-              <rect y="8.5" width="20" height="2.6" rx="1" fill="currentColor"/>
-              <rect y="14" width="20" height="2.6" rx="1" fill="currentColor"/>
+              <rect y="3" width="20" height="2.6" rx="1" fill="currentColor" />
+              <rect y="8.5" width="20" height="2.6" rx="1" fill="currentColor" />
+              <rect y="14" width="20" height="2.6" rx="1" fill="currentColor" />
             </svg>
           </button>
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-72 bg-zinc-900 border border-zinc-700 rounded shadow-lg flex flex-col select-none z-[999]">
-              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700" onClick={()=>{ handleConnect(); setMenuOpen(false); }}>重新連接</button>
-              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700" onClick={resetGame}>重新開始</button>
-              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700" onClick={retryCurrentRound}>重投</button>
-              <div className="flex justify-between items-center px-8 py-5 text-2xl hover:bg-zinc-700"><span>Fat Bull</span>
-                <FatBullSwitch enabled={fatBullEnabled} onChange={()=>setFatBullEnabled(!fatBullEnabled)}/></div>
-              <div className="flex justify-between items-center px-8 py-5 text-2xl hover:bg-zinc-700"><span>MO/OO</span>
-                <SwitchBox checked={moMode} onChange={()=>setMoMode(!moMode)}/></div>
-              <button className="px-8 py-4 text-2xl text-left border-t border-zinc-700 hover:bg-zinc-700" onClick={goHome}>返回首頁</button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={() => { handleConnect(); setMenuOpen(false); }}>重新連接</button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={resetGame}>重新開始</button>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700" onClick={retryCurrentRound}>重投</button>
+              <div className="flex justify-between items-center px-8 py-6 text-2xl hover:bg-zinc-700"><span>Fat Bull</span>
+                <FatBullSwitch enabled={fatBullEnabled} onChange={() => setFatBullEnabled(!fatBullEnabled)} />
+              </div>
+              <div className="flex justify-between items-center px-8 py-6 text-2xl hover:bg-zinc-700"><span>MO/OO</span>
+                <SwitchBox checked={moMode} onChange={() => setMoMode(!moMode)} />
+              </div>
+              <button className="px-8 py-4 text-2xl text-left hover:bg-zinc-700 focus:bg-zinc-700 border-t border-zinc-700"
+                onClick={goHome}>返回首頁</button>
             </div>
           )}
         </div>
         {/* 右下回合送出 */}
         <div className="absolute bottom-[7.5rem] right-4 z-50">
-          <button className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`} style={{borderRadius: 0}} onClick={endRound} disabled={currThrows.length===0}>
+          <button className={`${btnClass} bg-green-700 hover:bg-green-600 text-white`} style={{ borderRadius: 0 }} onClick={endRound} disabled={currThrows.length === 0}>
             <svg className="w-9 h-9" viewBox="0 0 40 40" fill="none">
-              <polyline points="12,10 12,28 28,28" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round"/>
-              <polygon points="28,28 21,23 21,33" fill="#fff"/>
+              <polyline points="12,10 12,28 28,28" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
+              <polygon points="28,28 21,23 21,33" fill="#fff" />
             </svg>
           </button>
         </div>
-        <div className="flex flex-row w-full flex-1 items-start" style={{paddingTop:`${MENU_BTN_HEIGHT}px`}}>
+        <div className="flex flex-row w-full flex-1 items-start" style={{ paddingTop: `${MENU_BTN_HEIGHT}px` }}>
           {/* 左-回合分數清單 有捲軸 */}
-          <div className="flex flex-col flex-[1_1_0%] min-w-[140px] max-w-[250px] px-3 pt-0" style={{height:"100%"}}>
-            <div className="w-full h-[420px] overflow-y-scroll custom-scrollbar" ref={historyBox}>
+          <div className="flex flex-col flex-[1_1_0%] min-w-[130px] max-w-[300px] px-2 pt-0" style={{ height: "100%" }}>
+            <div className="w-full h-[440px] overflow-y-scroll custom-scrollbar" ref={historyBox}>
               <div className="overflow-hidden border border-black rounded-none">
                 {visibleHistory.map((scoreVal, idx) => {
                   const color = bgColorByIndex(idx, visibleHistory.length);
                   return (
-                    <div className="flex" key={`row_${idx}`} style={{height: rowHeight}}>
+                    <div className="flex" key={`row_${idx}`} style={{ height: rowHeight }}>
                       <div style={{
-                        width: col1Width, height: rowHeight, background: color, borderLeft:"none", borderTopLeftRadius:0, borderBottomLeftRadius: 0, borderRight:"1px solid #222"
+                        width: col1Width, height: rowHeight, background: color, borderLeft: "none", borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderRight: "1px solid #222"
                       }}
                         className="text-[2rem] font-bold text-gray-900 border-b border-black flex items-center justify-center">
                         R{history.length - visibleHistory.length + idx + 1}
                       </div>
                       <div
-                        style={{width:col2Width, height:rowHeight, background:color, borderTopRightRadius:0, borderBottomRightRadius:0}}
-                        className="text-[2.4rem] font-extrabold border-b border-black flex items-center justify-end pr-7">
+                        style={{ width: col2Width, height: rowHeight, background: color, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                        className="text-[2.8rem] font-extrabold border-b border-black flex items-center justify-end pr-4">
                         {scoreVal}
                       </div>
                     </div>
@@ -276,38 +275,35 @@ export default function Page01() {
               </div>
             </div>
           </div>
-          {/* 中─大分數區(2/3寬) */}
+          {/* 中-大分數(2/3寬) */}
           <div className="flex flex-col flex-[2_2_0%] max-w-[66vw] w-full items-center justify-between h-full pt-0">
-            <div className="flex flex-1 items-center justify-center w-full h-full">
-              <div className="w-full flex justify-center items-center">
-                <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust}/>
-              </div>
+            <div className="flex flex-1 items-center justify-center w-full h-full" style={{ maxWidth: '66vw', minHeight: '12rem' }}>
+              <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust} />
             </div>
-            {/* 玩家條 */}
             <div className="flex items-center justify-center gap-10 w-full py-8 bg-gradient-to-t from-black via-zinc-950/80">
-              <span className="inline-block w-24 h-24 rounded-full bg-zinc-700 text-[3rem] flex items-center justify-center select-none">{avatar}</span>
-              <span className="text-4xl font-bold select-none">{playerName}</span>
-              <span className="ml-8 px-7 py-3 rounded bg-zinc-800 text-green-400 tracking-widest font-mono text-4xl font-black select-none">
+              <span className="inline-block w-24 h-24 rounded-full bg-zinc-700 text-[4.5rem] flex items-center justify-center select-none">{avatar}</span>
+              <span className="text-3xl font-bold select-none">{playerName}</span>
+              <span className="ml-8 px-6 py-3 rounded bg-zinc-800 text-green-400 tracking-widest font-mono text-4xl font-black select-none">
                 {currentTotal >= 0 ? currentTotal : 0}
               </span>
             </div>
           </div>
           {/* 右-三標分數格 與選單按鈕間距一顆按鈕高 */}
-          <div className="flex flex-col items-end justify-start flex-[1_1_0%] min-w-[120px] max-w-[270px] px-4 pb-16" style={{marginTop:MENU_BTN_HEIGHT}}>
-            <div className="flex flex-col items-end w-full gap-y-7 mb-7 mt-0">
-              {[0,1,2].map(i=>{
-                const highlight=displayedCurrThrows[i] === undefined && displayedCurrThrows.findIndex(v=>v===undefined)===i;
+          <div className="flex flex-col items-end justify-start flex-[1_1_0%] min-w-[150px] max-w-[330px] px-3 pb-16" style={{ marginTop: MENU_BTN_HEIGHT }}>
+            <div className="flex flex-col items-end w-full gap-y-6 mb-5 mt-0">
+              {[0, 1, 2].map(i => {
+                const highlight = displayedCurrThrows[i] === undefined && displayedCurrThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div key={i} className="flex flex-col items-end w-full">
                     <div style={{
-                      width:threeMarkBoxWidth, height:threeMarkBoxHeight, borderRadius:0
+                      width: threeMarkBoxWidth, height: threeMarkBoxHeight, borderRadius: 0
                     }}
                       className={`flex items-center justify-center border-2 text-5xl font-extrabold italic ${
                         displayedCurrThrows[i] !== undefined
                           ? "border-yellow-400 text-yellow-300 bg-zinc-900"
                           : highlight
-                          ? "border-green-400 text-white bg-green-800 animate-pulse"
-                          : "border-zinc-600 text-zinc-500 bg-zinc-900"
+                            ? "border-green-400 text-white bg-green-800 animate-pulse"
+                            : "border-zinc-600 text-zinc-500 bg-zinc-900"
                       } select-none mx-0`}>
                       <span className="w-full text-center">{displayedCurrThrows[i] !== undefined ? displayedCurrThrows[i] : "--"}</span>
                     </div>
@@ -317,13 +313,11 @@ export default function Page01() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col w-full"><div className="w-full h-3 bg-gradient-to-t from-yellow-600/80 to-black/0"/></div>
+        <div className="flex flex-col w-full"><div className="w-full h-3 bg-gradient-to-t from-yellow-600/80 to-black/0" /></div>
         <style jsx>{`
-          .custom-scrollbar::-webkit-scrollbar { width: 16px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: rgba(255,215,0,0.45); border-radius: 6px; border: 6px solid transparent; background-clip: content-box;
-          }
-          .terminal-digit { font-feature-settings:"tnum"; border-radius:0.25rem; box-shadow:0 0 24px #27ff46a0,0 2px 60px #021; }
+          .custom-scrollbar::-webkit-scrollbar { width: 15px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(255,215,0,0.45); border-radius: 7px; border: 5px solid transparent; background-clip: content-box; }
+          .terminal-digit { font-feature-settings:"tnum"; border-radius:0.17em; box-shadow:0 0 24px #27ff46a0,0 2px 60px #021; }
         `}</style>
       </main>
     </div>
