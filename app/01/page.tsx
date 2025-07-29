@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID: number = 84; // 你的紅色按鈕ID
+const RED_BUTTON_SEGMENT_ID: number = 84;
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -24,8 +24,13 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
   return (
     <span className="terminal-digit select-none bg-black text-green-400 font-mono font-extrabold flex items-end justify-center"
       style={{
-        fontStretch: "expanded", fontSize: "clamp(5rem, 12vw, 13rem)", lineHeight: 1.05,
-        height: "clamp(7rem, 13vw, 15rem)", minWidth: "2.05em", padding: "0.13em 0.1em", letterSpacing: "-0.21em"
+        fontStretch: "expanded",
+        fontSize: "clamp(5rem, 12vw, 13rem)",
+        lineHeight: 1.05,
+        height: "clamp(7rem, 13vw, 15rem)",
+        minWidth: "2.05em",
+        padding: "0.13em 0.1em",
+        letterSpacing: "-0.21em"
       }}>{current}</span>
   );
 }
@@ -102,7 +107,7 @@ export default function Page01() {
   const [avatar] = useState("👨‍💻");
 
   useEffect(() => {
-    // 如需追蹤分數，請這裡 log
+    // 你要看 score 變化 log 上這裡
     console.log("畫面分數即時顯示：", score);
   }, [score]);
 
@@ -220,8 +225,16 @@ export default function Page01() {
     <div className="bg-black text-white w-full min-h-screen flex flex-col"
       style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}>
       <main className="flex flex-col h-full w-full flex-1 relative">
-        {/* ...原本完整的UI元件與內容... */}
-        {/* 下方可直接照上一版貼，不再有 {console.log(...)} 放在 return 內，型別100%過關 */}
+        {/* ...所有 JSX 內容，過去有加過 {console.log(...)} 的部分，這裡完全削掉，只保留你要顯示的 UI */}
+        <div className="flex flex-1 items-center justify-center w-full h-full" style={{ maxWidth: '66vw', minHeight: '12rem' }}>
+          <div style={{
+            width: "100%", display: "flex", justifyContent: "center",
+            alignItems: "center", minWidth: "min(100vw,1200px)"
+          }}>
+            <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust} />
+          </div>
+        </div>
+        {/* ... 省略其它你的原樣 UI ... */}
       </main>
     </div>
   );
