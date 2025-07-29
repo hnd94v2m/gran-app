@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID = 99; // <<< 請改成實測你紅色按鍵的 Segment.ID
+const RED_BUTTON_SEGMENT_ID = 84; // <<< 請改成實測你紅色按鍵的 Segment.ID
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
