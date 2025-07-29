@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID: number = 84; // 紅色按鈕ID：請根據你實測結果
+const RED_BUTTON_SEGMENT_ID: number = 84; // 你的紅色按鈕ID
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -161,7 +161,7 @@ export default function Page01() {
     granboard.segmentHitCallback = (segment: Segment) => {
       if (hitLock.current) return;
       if (roundEnded.current) return;
-
+      // 型別安全比較
       if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
         console.log('偵測到紅色按鈕！');
         if (currThrows.length > 0) {
@@ -170,13 +170,10 @@ export default function Page01() {
         }
         return;
       }
-
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
       hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600);
-
       const hitVal = getAdjustedScore(segment.Value);
-
       setCurrThrows(prev => {
         if (prev.length >= 3) {
           console.warn("currThrows已滿3鏢，忽略本鏢");
@@ -185,9 +182,7 @@ export default function Page01() {
         const newThrows = [...prev, hitVal];
         console.log("擊中區塊 Segment:", segment, "=> 記錄分數 hitVal:", hitVal);
         console.log("累積中 currThrows:", newThrows);
-
         if (prev.length === 0) setLastValidScore(score);
-
         const throwsSum = prev.reduce((a, b) => a + b, 0);
         const left = score - throwsSum;
         const isBust = (
