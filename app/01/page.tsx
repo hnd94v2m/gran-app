@@ -1,6 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+// ↓請依你的專案確保底下 import 路徑正確
 import { Granboard } from "@/services/granboard";
 import { Segment, SegmentType } from "@/services/boardinfo";
 
@@ -102,7 +103,6 @@ export default function Page01() {
   const [lastValidScore, setLastValidScore] = useState(START_SCORE);
   const [bust, setBust] = useState(false);
   const [bustRoundNum, setBustRoundNum] = useState<number | null>(null);
-  const hitLock = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [fatBullEnabled, setFatBullEnabled] = useState(true);
   const [moMode, setMoMode] = useState(true);
@@ -110,6 +110,11 @@ export default function Page01() {
   const historyBox = useRef<HTMLDivElement>(null);
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
+
+  // ----- 核心防重複 flag/timer -----
+  const hitLock = useRef(false);          // 防抖用
+  const roundEnded = useRef(false);       // 回合是否已結束
+  const hitTimer = useRef<NodeJS.Timeout | null>(null);
 
   function isLegalFinish(segment: Segment, fatBull: boolean, mo: boolean) {
     if (!mo) return true;
@@ -124,21 +129,18 @@ export default function Page01() {
   }
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
-    // 印出本回合各鏢分數（應為已考慮 Fat Bull 後的分數）
     console.log("=== End Round (endRoundWithThrows) ===");
     console.log("本回合分數 throwsToAdd:", throwsToAdd);
-    // 輸出本回合總分與扣完後的剩餘分數
     console.log("本回合總分 sum:", sum, "，原始剩餘分數 score:", score, "，扣完後剩餘分數:", score - sum);
-
     setHistory(prev => [...prev, sum]);
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
     setScore(prevScore => {
       const newScore = prevScore - sum;
-      // 追蹤每次 setScore 的前後變化
       console.log(`setScore: ${prevScore} - ${sum} = ${newScore}`);
       return newScore;
     });
+    roundEnded.current = false; // 結束回合後重置，允許新回合
   }
 
   useEffect(() => {
@@ -153,22 +155,30 @@ export default function Page01() {
 
   useEffect(() => {
     if (!granboard) return;
-    let timer: NodeJS.Timeout | null = null;
+
     granboard.segmentHitCallback = (segment: Segment) => {
+      // 強化：回合正在結算或防重複進來時阻斷
       if (hitLock.current) return;
+      if (roundEnded.current) return;
+
       hitLock.current = true;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { hitLock.current = false; }, 380);
+      if (hitTimer.current) clearTimeout(hitTimer.current);
+      hitTimer.current = setTimeout(() => { hitLock.current = false; }, 400);
+
+      const hitVal = getAdjustedScore(segment.Value);
+      console.log("擊中區塊 Segment:", segment, "=> 記錄分數 hitVal:", hitVal);
 
       setCurrThrows(prev => {
-        const throwCount = prev.length;
+        // 若已 3 鏢直接拒絕輸入
+        if (prev.length >= 3) {
+          console.warn("警告: currThrows 已滿 3 鏢，忽略本鏢");
+          return prev;
+        }
+        const newThrows = [...prev, hitVal];
+        console.log("累積中 currThrows:", newThrows);
+
+        if (prev.length === 0) setLastValidScore(score);
         const throwsSum = prev.reduce((a, b) => a + b, 0);
-        const hitVal = getAdjustedScore(segment.Value);
-
-        // 追蹤每次擊中鏢區及其分數
-        console.log("擊中區塊 Segment:", segment, "=> 記錄分數 hitVal:", hitVal);
-
-        if (throwCount === 0) setLastValidScore(score);
         const left = score - throwsSum;
         const isBust = (
           hitVal > left ||
@@ -181,21 +191,39 @@ export default function Page01() {
           setScore(lastValidScore);
           setCurrThrows([]); setLastRoundThrows([]);
           setBustRoundNum(history.length + 1);
+          roundEnded.current = false;
           return [];
         }
-        if (throwCount === 2) {
-          endRoundWithThrows([...prev, hitVal]);
+        if (newThrows.length === 3) {
+          roundEnded.current = true;
+          endRoundWithThrows(newThrows);
           return [];
         }
-        return [...prev, hitVal];
+        return newThrows;
       });
     };
+
     return () => {
       granboard.segmentHitCallback = undefined;
-      if (timer) clearTimeout(timer);
+      if (hitTimer.current) clearTimeout(hitTimer.current);
     };
     // eslint-disable-next-line
   }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history]);
+
+  // 清潔狀態： reset/retry 時也都重設 flag
+  const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; };
+  const resetGame = () => {
+    setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
+    setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null); roundEnded.current = false;
+  };
+  const goHome = () => { router.push("/"); setMenuOpen(false); };
+  const endRound = () => {
+    if (currThrows.length === 0) return;
+    roundEnded.current = true;
+    endRoundWithThrows(currThrows);
+  };
+
+  const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
 
   let displayedCurrThrows = lastRoundThrows.length > 0 && currThrows.length === 0 ? lastRoundThrows : currThrows;
   if (bustRoundNum && (history.length + 1) === bustRoundNum + 1 && currThrows.length === 0)
@@ -215,15 +243,6 @@ export default function Page01() {
   const threeMarkBoxWidth = "135px";
   const threeMarkBoxHeight = "80px";
   const btnClass = "w-16 h-16 flex items-center justify-center shadow-lg p-0";
-  const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
-
-  const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); };
-  const resetGame = () => {
-    setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
-    setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null);
-  };
-  const goHome = () => { router.push("/"); setMenuOpen(false); };
-  const endRound = () => { if (currThrows.length === 0) return; endRoundWithThrows(currThrows); };
 
   return (
     <div className="bg-black text-white w-full min-h-screen flex flex-col"
