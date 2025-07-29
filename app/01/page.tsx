@@ -106,10 +106,11 @@ export default function Page01() {
   const [fatBullEnabled, setFatBullEnabled] = useState(true);
   const [moMode, setMoMode] = useState(true);
 
-  // 狀態旗標
+  // 狀態旗標與計鏢專用
   const hitLock = useRef(false);
   const roundEnded = useRef(false);
   const hitTimer = useRef<NodeJS.Timeout | null>(null);
+  const throwCountRef = useRef(0);
 
   const historyBox = useRef<HTMLDivElement>(null);
   const [playerName] = useState("Player 1");
@@ -127,6 +128,7 @@ export default function Page01() {
     return val;
   }
   function endRoundWithThrows(throwsToAdd: number[]) {
+    throwCountRef.current = 0; // 回合結束重置
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     console.log("=== End Round (endRoundWithThrows) ===");
     console.log("本回合分數 throwsToAdd:", throwsToAdd);
@@ -139,13 +141,14 @@ export default function Page01() {
       console.log(`setScore: ${prevScore} - ${sum} = ${newScore}`);
       return newScore;
     });
-    // 這裡不立刻解除 roundEnded，交由 useEffect(score) 負責
+    // 不在這裡開放新回合，改由 useEffect(score)
   }
 
-  // score 變動時自動開放新回合
+  // 分數變動時執行：允許新回合＆reset鏢數
   useEffect(() => {
     console.log('score 更新，允許新回合開始');
     roundEnded.current = false;
+    throwCountRef.current = 0;
   }, [score]);
 
   useEffect(() => {
@@ -165,6 +168,13 @@ export default function Page01() {
       if (hitLock.current) return;
       if (roundEnded.current) return;
 
+      // *** 僅允許一回合三支鏢進來 ***
+      if (throwCountRef.current >= 3) {
+        console.warn("已計三鏢，忽略本鏢");
+        return;
+      }
+      throwCountRef.current += 1;
+
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
       hitTimer.current = setTimeout(() => { hitLock.current = false; }, 400);
@@ -173,10 +183,6 @@ export default function Page01() {
       console.log("擊中區塊 Segment:", segment, "=> 記錄分數 hitVal:", hitVal);
 
       setCurrThrows(prev => {
-        if (prev.length >= 3) {
-          console.warn("currThrows已滿3鏢，忽略本鏢");
-          return prev;
-        }
         const newThrows = [...prev, hitVal];
         console.log("累積中 currThrows:", newThrows);
 
@@ -195,6 +201,7 @@ export default function Page01() {
           setCurrThrows([]); setLastRoundThrows([]);
           setBustRoundNum(history.length + 1);
           roundEnded.current = false;
+          throwCountRef.current = 0;
           return [];
         }
         if (newThrows.length === 3) {
@@ -213,10 +220,11 @@ export default function Page01() {
     // eslint-disable-next-line
   }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history]);
 
-  const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; };
+  // 清潔狀態流程
+  const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; throwCountRef.current = 0; };
   const resetGame = () => {
     setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
-    setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null); roundEnded.current = false;
+    setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null); roundEnded.current = false; throwCountRef.current = 0;
   };
   const goHome = () => { router.push("/"); setMenuOpen(false); };
   const endRound = () => {
