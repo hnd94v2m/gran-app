@@ -31,6 +31,7 @@ function TerminalFlipDigit({ digit }: { digit: string }) {
     </span>
   );
 }
+
 function TerminalFlipScore({ num, showBust }: { num: number; showBust: boolean }) {
   if (showBust) {
     return (
@@ -113,19 +114,18 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // *** 這裡是關鍵：把 endRoundWithThrows 提升到最上方 ***
-  const endRoundWithThrows = (throwsToAdd: number[]) => {
+  // *** 1. 把 endRoundWithThrows 提到最前面 ***
+  function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(pv => [...pv, sum]);
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
-  };
+  }
 
   useEffect(() => {
     if (historyBox.current)
       historyBox.current.scrollTop = historyBox.current.scrollHeight;
   }, [history]);
-
   useEffect(() => { handleConnect(); }, []);
 
   function getAdjustedScore(val: number) {
