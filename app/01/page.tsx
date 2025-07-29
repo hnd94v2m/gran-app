@@ -138,18 +138,18 @@ export default function Page01() {
       console.log(`setScore: ${prevScore} - ${sum} = ${newScore}`);
       return newScore;
     });
-    // 由 useEffect(score) 自動允許新回合
+    roundEnded.current = true;
+    // 用 500ms 延遲保證 UI 更新並等待 setScore
+    setTimeout(() => {
+      console.log('回合結束，釋放下一回合鎖定');
+      roundEnded.current = false;
+    }, 500);
   }
-
-  // 分數或回合狀態變動時允許新回合
-  useEffect(() => {
-    console.log('score 更新，允許新回合開始');
-    roundEnded.current = false;
-  }, [score]);
 
   useEffect(() => {
     if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight;
   }, [history]);
+
   useEffect(() => { handleConnect(); }, []);
 
   const handleConnect = async () => {
@@ -166,12 +166,11 @@ export default function Page01() {
 
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
-      hitTimer.current = setTimeout(() => { hitLock.current = false; }, 400);
+      hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600); // 600ms debounce
 
       const hitVal = getAdjustedScore(segment.Value);
 
       setCurrThrows(prev => {
-        // **這裡只認前3標，超過直接忽略**
         if (prev.length >= 3) {
           console.warn("currThrows已滿3鏢，忽略本鏢");
           return prev;
@@ -181,6 +180,7 @@ export default function Page01() {
         console.log("累積中 currThrows:", newThrows);
 
         if (prev.length === 0) setLastValidScore(score);
+
         const throwsSum = prev.reduce((a, b) => a + b, 0);
         const left = score - throwsSum;
         const isBust = (
@@ -213,7 +213,6 @@ export default function Page01() {
     // eslint-disable-next-line
   }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history]);
 
-  // 清潔狀態
   const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; };
   const resetGame = () => {
     setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
@@ -287,7 +286,6 @@ export default function Page01() {
           </button>
         </div>
         <div className="flex flex-row w-full flex-1 items-start" style={{ paddingTop: `${MENU_BTN_HEIGHT}px` }}>
-          {/* 左-回合分數清單 有捲軸 */}
           <div className="flex flex-col flex-[1_1_0%] min-w-[130px] max-w-[300px] px-2 pt-0" style={{ height: "100%" }}>
             <div className="w-full h-[440px] overflow-y-scroll custom-scrollbar" ref={historyBox}>
               <div className="overflow-hidden border border-black rounded-none">
@@ -312,7 +310,6 @@ export default function Page01() {
               </div>
             </div>
           </div>
-          {/* 中-大分數(2/3寬) */}
           <div className="flex flex-col flex-[2_2_0%] max-w-[66vw] w-full items-center justify-between h-full pt-0">
             <div className="flex flex-1 items-center justify-center w-full h-full" style={{ maxWidth: '66vw', minHeight: '12rem' }}>
               <div style={{
@@ -333,7 +330,6 @@ export default function Page01() {
               </span>
             </div>
           </div>
-          {/* 右-三標分數格 與選單按鈕間距一顆按鈕高 */}
           <div className="flex flex-col items-end justify-start flex-[1_1_0%] min-w-[150px] max-w-[330px] px-3 pb-16" style={{ marginTop: MENU_BTN_HEIGHT }}>
             <div className="flex flex-col items-end w-full gap-y-6 mb-5 mt-0">
               {[0, 1, 2].map(i => {
