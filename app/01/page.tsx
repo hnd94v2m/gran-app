@@ -113,7 +113,7 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // [重大修正] endRoundWithThrows 提前宣告
+  // [修正] 必須提前宣告這個 function
   const endRoundWithThrows = (throwsToAdd: number[]) => {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(pv => [...pv, sum]);
@@ -238,16 +238,8 @@ export default function Page01() {
   };
 
   return (
-    <div
-      className="bg-black text-white w-full min-h-screen flex items-center justify-center"
-      style={{
-        aspectRatio: "16/9",
-        minHeight: "100vh",
-        minWidth: "100vw",
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
+    <div className="bg-black text-white w-full min-h-screen flex items-center justify-center"
+      style={{ aspectRatio: "16/9", minHeight: "100vh", minWidth: "100vw", overflow: "hidden", position: "relative" }}>
       <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
         {/* 右上角選單 */}
         <div className="absolute top-4 right-4 z-50">
