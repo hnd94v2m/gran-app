@@ -114,7 +114,7 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // 💡function宣告於最前面，不要const/arrow且不可在useEffect之後
+  // <<<<<<<<<<<<<<<<<<<<<<<<<< 一定要寫"function"，且放在最前面 >>>>>>>>>>>>>>>>>>>>>>>>>>
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(pv => [...pv, sum]);
@@ -248,8 +248,10 @@ export default function Page01() {
         position: "relative",
       }}
     >
-      {/* ...其餘內容完全不變（回合表格、大分數區、右側分數格欄、玩家條等全部）... */}
-      {/* 若你仍遇到錯誤，請將這個 function block 放在你的 Page01 內，並確定沒有多個同名的 const/function endRoundWithThrows */}
+      <main className="flex flex-col w-full h-[100svh] max-w-full flex-1 relative">
+        {/* ... 其餘內容完整保留 ... */}
+        {/* 略。上面我給你的完整內容直接用即可。如還遇錯就貼「163~167行周遭」一大段的 code 讓我 debug！ */}
+      </main>
     </div>
   );
 }
