@@ -1,7 +1,6 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-// ↓請依你的專案確保底下 import 路徑正確
 import { Granboard } from "@/services/granboard";
 import { Segment, SegmentType } from "@/services/boardinfo";
 
@@ -107,14 +106,14 @@ export default function Page01() {
   const [fatBullEnabled, setFatBullEnabled] = useState(true);
   const [moMode, setMoMode] = useState(true);
 
+  // 狀態旗標
+  const hitLock = useRef(false);
+  const roundEnded = useRef(false);
+  const hitTimer = useRef<NodeJS.Timeout | null>(null);
+
   const historyBox = useRef<HTMLDivElement>(null);
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
-
-  // ----- 核心防重複 flag/timer -----
-  const hitLock = useRef(false);          // 防抖用
-  const roundEnded = useRef(false);       // 回合是否已結束
-  const hitTimer = useRef<NodeJS.Timeout | null>(null);
 
   function isLegalFinish(segment: Segment, fatBull: boolean, mo: boolean) {
     if (!mo) return true;
@@ -140,8 +139,14 @@ export default function Page01() {
       console.log(`setScore: ${prevScore} - ${sum} = ${newScore}`);
       return newScore;
     });
-    roundEnded.current = false; // 結束回合後重置，允許新回合
+    // 這裡不立刻解除 roundEnded，交由 useEffect(score) 負責
   }
+
+  // score 變動時自動開放新回合
+  useEffect(() => {
+    console.log('score 更新，允許新回合開始');
+    roundEnded.current = false;
+  }, [score]);
 
   useEffect(() => {
     if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight;
@@ -157,7 +162,6 @@ export default function Page01() {
     if (!granboard) return;
 
     granboard.segmentHitCallback = (segment: Segment) => {
-      // 強化：回合正在結算或防重複進來時阻斷
       if (hitLock.current) return;
       if (roundEnded.current) return;
 
@@ -169,9 +173,8 @@ export default function Page01() {
       console.log("擊中區塊 Segment:", segment, "=> 記錄分數 hitVal:", hitVal);
 
       setCurrThrows(prev => {
-        // 若已 3 鏢直接拒絕輸入
         if (prev.length >= 3) {
-          console.warn("警告: currThrows 已滿 3 鏢，忽略本鏢");
+          console.warn("currThrows已滿3鏢，忽略本鏢");
           return prev;
         }
         const newThrows = [...prev, hitVal];
@@ -210,7 +213,6 @@ export default function Page01() {
     // eslint-disable-next-line
   }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history]);
 
-  // 清潔狀態： reset/retry 時也都重設 flag
   const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; };
   const resetGame = () => {
     setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
@@ -330,7 +332,7 @@ export default function Page01() {
               </span>
             </div>
           </div>
-          {/* 右-三標分數格 與選單按鈕間距一顆按鈕高 */}
+          {/* 右-三標分數格 */}
           <div className="flex flex-col items-end justify-start flex-[1_1_0%] min-w-[150px] max-w-[330px] px-3 pb-16" style={{ marginTop: MENU_BTN_HEIGHT }}>
             <div className="flex flex-col items-end w-full gap-y-6 mb-5 mt-0">
               {[0, 1, 2].map(i => {
