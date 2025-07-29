@@ -114,7 +114,7 @@ export default function Page01() {
   const [playerName] = useState("Player 1");
   const [avatar] = useState("👨‍💻");
 
-  // *** 1. function 宣告方式（不是 const/arrow） ***
+  // **function 宣告在最前面！**
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(pv => [...pv, sum]);
