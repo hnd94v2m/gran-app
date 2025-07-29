@@ -1,18 +1,19 @@
 'use client';
-import React from "react";
+import React, { useEffect } from "react";
 
 export default function Page01() {
   function endRoundWithThrows(arr: number[]) {
+    // 只為驗證作用域與 TS 無誤
     console.log("function ok", arr.join(","));
   }
 
-  React.useEffect(() => {
-    endRoundWithThrows([100, 200]);
+  useEffect(() => {
+    endRoundWithThrows([1,2,3]);
   }, []);
 
   return (
-    <div style={{color:"green", fontSize:"2rem"}}>
-      編譯ok，function已被呼叫，請檢查console log
+    <div style={{color:"limegreen",fontSize:"2rem"}}>
+      測試：如有看到這畫面，function沒問題，請打開 console 檢查日誌。
     </div>
   );
 }
