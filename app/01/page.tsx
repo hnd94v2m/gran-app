@@ -124,10 +124,21 @@ export default function Page01() {
   }
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
+    // 印出本回合各鏢分數（應為已考慮 Fat Bull 後的分數）
+    console.log("=== End Round (endRoundWithThrows) ===");
+    console.log("本回合分數 throwsToAdd:", throwsToAdd);
+    // 輸出本回合總分與扣完後的剩餘分數
+    console.log("本回合總分 sum:", sum, "，原始剩餘分數 score:", score, "，扣完後剩餘分數:", score - sum);
+
     setHistory(prev => [...prev, sum]);
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
-    setScore(prevScore => prevScore - sum);
+    setScore(prevScore => {
+      const newScore = prevScore - sum;
+      // 追蹤每次 setScore 的前後變化
+      console.log(`setScore: ${prevScore} - ${sum} = ${newScore}`);
+      return newScore;
+    });
   }
 
   useEffect(() => {
@@ -153,6 +164,9 @@ export default function Page01() {
         const throwCount = prev.length;
         const throwsSum = prev.reduce((a, b) => a + b, 0);
         const hitVal = getAdjustedScore(segment.Value);
+
+        // 追蹤每次擊中鏢區及其分數
+        console.log("擊中區塊 Segment:", segment, "=> 記錄分數 hitVal:", hitVal);
 
         if (throwCount === 0) setLastValidScore(score);
         const left = score - throwsSum;
