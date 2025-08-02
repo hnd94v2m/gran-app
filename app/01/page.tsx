@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID: number = 84; // 你的紅色按鈕ID
+const RED_BUTTON_SEGMENT_ID: number = 84; // 紅色按鈕ID
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -123,7 +123,6 @@ export default function Page01() {
   }
 
   const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
-
   const justEndedRound = lastRoundThrows.length > 0 && currThrows.length === 0 && !bust;
   const showThrows = justEndedRound ? lastRoundThrows : currThrows;
   let currentTotal: number;
@@ -135,24 +134,19 @@ export default function Page01() {
     currentTotal = score - showThrows.reduce((a, b) => a + b, 0);
     if (currentTotal < 0) currentTotal = 0;
   }
-
-  // ============關鍵修正： 每回合(不管是自動/紅鈕)都要解鎖，確保下回合每鏢皆反應============
   function fullyReleaseAllLocks() {
     roundEnded.current = false;
     hitLock.current = false;
     if (hitTimer.current) clearTimeout(hitTimer.current);
   }
-
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(prev => [...prev, sum]);
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
     setScore(prevScore => prevScore - sum);
-    // 立刻重設鎖（不用setTimeout延遲），下一回合所有鏢皆可正常進入判斷
     fullyReleaseAllLocks();
   }
-
   useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
   useEffect(() => { handleConnect(); }, []);
   const handleConnect = async () => {
@@ -163,7 +157,7 @@ export default function Page01() {
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
-      // ==== 處理紅色結算按鈕 ====
+      // 只用紅色按鈕結算，取消自動三標結束回合
       if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
         if (currThrowsRef.current.length > 0) {
           endRoundWithThrows([...currThrowsRef.current]);
@@ -184,7 +178,6 @@ export default function Page01() {
 
       setCurrThrows(prev => {
         let nowThrows = currThrowsRef.current;
-        if (nowThrows.length >= 3) return nowThrows;
         const newThrows = [...nowThrows, hitVal];
         if (nowThrows.length === 0) setLastValidScore(scoreRef.current);
 
@@ -203,10 +196,6 @@ export default function Page01() {
           setLastRoundThrows([]);
           setBustRoundNum(history.length + 1);
           fullyReleaseAllLocks();
-          return [];
-        }
-        if (newThrows.length === 3) {
-          endRoundWithThrows(newThrows);
           return [];
         }
         return newThrows;
@@ -233,14 +222,12 @@ export default function Page01() {
     if (currThrowsRef.current.length === 0) return;
     endRoundWithThrows(currThrowsRef.current);
   };
-
   function bgColorByIndex(idx: number, len: number): string {
     const min = 32, max = 228;
     const ratio = len <= 1 ? 0 : idx / (len - 1);
     const gray = Math.round(min + (max - min) * ratio);
     return idx % 2 === 0 ? `rgb(${gray},${gray},${gray})` : `rgb(${Math.max(gray - 10, min)},${Math.max(gray - 10, min)},${Math.max(gray - 10, min)})`;
   }
-
   const col1Width = "100px";
   const col2Width = "137px";
   const rowHeight = "52px";
