@@ -122,20 +122,11 @@ export default function Page01() {
     return val;
   }
 
-  // ============ 修正：此回合「主畫面剩餘分」須正確顯示前一回合分數，再扣本回合已丟分 ============
-  // 正常流程：只有丟到時 (不管1/2/3標)，畫面大分數應是 上回合結束 score - 當回合已丟 sum
-  // 這裡做邏輯切換：只有未 bust、非剛結束顯示上一回合鏢時，才顯示計算後的暫時分數
-  // 若剛結束/剛 bust，立即只顯示回合結束分
   const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
 
-  // 判斷剛回合結束，currThrows應清空，顯示 lastRoundThrows（讓三鏢分再顯示一次，美觀用）
+  // 主分數顯示
   const justEndedRound = lastRoundThrows.length > 0 && currThrows.length === 0 && !bust;
   const showThrows = justEndedRound ? lastRoundThrows : currThrows;
-
-  // 畫面分數（大分）顯示機制
-  // 1. bust 狀態時（顯示 BUST，大分固定為上回合分）
-  // 2. 正常進行時，顯示「score - 本回合已丟分」
-  // 3. 剛結束時要顯示扣完後分，非201跳號
   let currentTotal: number;
   if (bust) {
     currentTotal = scoreRef.current;
@@ -143,27 +134,30 @@ export default function Page01() {
     currentTotal = score;
   } else {
     currentTotal = score - showThrows.reduce((a, b) => a + b, 0);
-    // 避免分數負值
     if (currentTotal < 0) currentTotal = 0;
+  }
+
+  // === 修正：Red button(結束回合) 狀態管理與明確歸零 ===
+  function forceRoundClear() {
+    setCurrThrows([]);
+    setLastRoundThrows([]);
+    roundEnded.current = false;
+    hitLock.current = false;
+    if (hitTimer.current) clearTimeout(hitTimer.current);
   }
 
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
-    console.log("結算回合得分:", throwsToAdd, "分數扣:", sum);
     setHistory(prev => [...prev, sum]);
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
-    setScore(prevScore => {
-      const newScore = prevScore - sum;
-      console.log(`setScore: ${prevScore} - ${sum} = ${newScore}`);
-      return newScore;
-    });
+    setScore(prevScore => prevScore - sum);
     roundEnded.current = true;
     hitLock.current = false;
     if (hitTimer.current) clearTimeout(hitTimer.current);
     setTimeout(() => {
       roundEnded.current = false;
-    }, 500);
+    }, 300);
   }
 
   useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
@@ -176,43 +170,41 @@ export default function Page01() {
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
-      if (hitLock.current) return;
-      if (roundEnded.current) return;
-
+      // ==== 處理紅色按鈕 ====
       if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
         if (currThrowsRef.current.length > 0) {
-          endRoundWithThrows(currThrowsRef.current);
-        } else {
-          roundEnded.current = false;
-          hitLock.current = false;
-          if (hitTimer.current) clearTimeout(hitTimer.current);
+          // 若有分，結算回合
+          endRoundWithThrows([...currThrowsRef.current]);
         }
+        // 不論有無，都「明確解鎖所有回合中止情境」！（重點修正）
+        forceRoundClear();
         return;
       }
+      // 若正在結束流程，直接忽略該鏢
+      if (roundEnded.current) return;
+      if (hitLock.current) return;
 
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
       hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600);
 
       const hitVal = getAdjustedScore(segment.Value);
-      console.log(`擊中分數：${hitVal}，當前分數：${scoreRef.current}`, segment);
 
       setCurrThrows(prev => {
         let nowThrows = currThrowsRef.current;
         // 最多三標
         if (nowThrows.length >= 3) return nowThrows;
         const newThrows = [...nowThrows, hitVal];
-        // 第一標記錄「這輪前」分
         if (nowThrows.length === 0) setLastValidScore(scoreRef.current);
 
         const throwsSum = newThrows.reduce((a, b) => a + b, 0);
-        const left = scoreRef.current - throwsSum;
 
-        const isBust =
+        const bustNow =
           hitVal > (scoreRef.current - nowThrows.reduce((a, b) => a + b, 0)) ||
           (scoreRef.current - nowThrows.reduce((a, b) => a + b, 0)) - hitVal === 1 ||
           ((scoreRef.current - throwsSum) === 0 && !isLegalFinish(segment, fatBullEnabled, moMode));
-        if (isBust) {
+
+        if (bustNow) {
           setBust(true);
           setTimeout(() => setBust(false), 1200);
           setScore(lastValidScore);
@@ -337,7 +329,6 @@ export default function Page01() {
                 width: "100%", display: "flex", justifyContent: "center",
                 alignItems: "center", minWidth: "min(100vw,1200px)"
               }}>
-                {/* 主畫面顯示分數（大分） */}
                 <TerminalFlipScore num={currentTotal} showBust={bust} />
               </div>
             </div>
