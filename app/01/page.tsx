@@ -136,7 +136,7 @@ export default function Page01() {
     if (currentTotal < 0) currentTotal = 0;
   }
 
-  // 關鍵修正：每當回合結束/紅按鈕，**確保所有狀態和鎖ref都正確重設**
+  // ============關鍵修正： 每回合(不管是自動/紅鈕)都要解鎖，確保下回合每鏢皆反應============
   function fullyReleaseAllLocks() {
     roundEnded.current = false;
     hitLock.current = false;
@@ -149,14 +149,8 @@ export default function Page01() {
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
     setScore(prevScore => prevScore - sum);
-    // 這裡鎖起來，避免連擊多判一次，但 150ms 立即解開（比紅按鈕流程還快），
-    // 下回合第一鏢能進正確流程
-    roundEnded.current = true;
-    hitLock.current = true;
-    if (hitTimer.current) clearTimeout(hitTimer.current);
-    setTimeout(() => {
-      fullyReleaseAllLocks();
-    }, 150);
+    // 立刻重設鎖（不用setTimeout延遲），下一回合所有鏢皆可正常進入判斷
+    fullyReleaseAllLocks();
   }
 
   useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
