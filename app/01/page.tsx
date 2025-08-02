@@ -124,7 +124,6 @@ export default function Page01() {
 
   const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
 
-  // 主分數顯示
   const justEndedRound = lastRoundThrows.length > 0 && currThrows.length === 0 && !bust;
   const showThrows = justEndedRound ? lastRoundThrows : currThrows;
   let currentTotal: number;
@@ -137,10 +136,8 @@ export default function Page01() {
     if (currentTotal < 0) currentTotal = 0;
   }
 
-  // === 修正：Red button(結束回合) 狀態管理與明確歸零 ===
-  function forceRoundClear() {
-    setCurrThrows([]);
-    setLastRoundThrows([]);
+  // 關鍵修正：每當回合結束/紅按鈕，**確保所有狀態和鎖ref都正確重設**
+  function fullyReleaseAllLocks() {
     roundEnded.current = false;
     hitLock.current = false;
     if (hitTimer.current) clearTimeout(hitTimer.current);
@@ -152,12 +149,14 @@ export default function Page01() {
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
     setScore(prevScore => prevScore - sum);
+    // 這裡鎖起來，避免連擊多判一次，但 150ms 立即解開（比紅按鈕流程還快），
+    // 下回合第一鏢能進正確流程
     roundEnded.current = true;
-    hitLock.current = false;
+    hitLock.current = true;
     if (hitTimer.current) clearTimeout(hitTimer.current);
     setTimeout(() => {
-      roundEnded.current = false;
-    }, 300);
+      fullyReleaseAllLocks();
+    }, 150);
   }
 
   useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
@@ -170,19 +169,18 @@ export default function Page01() {
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
-      // ==== 處理紅色按鈕 ====
+      // ==== 處理紅色結算按鈕 ====
       if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
         if (currThrowsRef.current.length > 0) {
-          // 若有分，結算回合
           endRoundWithThrows([...currThrowsRef.current]);
+        } else {
+          setCurrThrows([]);
+          setLastRoundThrows([]);
+          fullyReleaseAllLocks();
         }
-        // 不論有無，都「明確解鎖所有回合中止情境」！（重點修正）
-        forceRoundClear();
         return;
       }
-      // 若正在結束流程，直接忽略該鏢
-      if (roundEnded.current) return;
-      if (hitLock.current) return;
+      if (roundEnded.current || hitLock.current) return;
 
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
@@ -192,7 +190,6 @@ export default function Page01() {
 
       setCurrThrows(prev => {
         let nowThrows = currThrowsRef.current;
-        // 最多三標
         if (nowThrows.length >= 3) return nowThrows;
         const newThrows = [...nowThrows, hitVal];
         if (nowThrows.length === 0) setLastValidScore(scoreRef.current);
@@ -211,9 +208,7 @@ export default function Page01() {
           setCurrThrows([]);
           setLastRoundThrows([]);
           setBustRoundNum(history.length + 1);
-          roundEnded.current = false;
-          hitLock.current = false;
-          if (hitTimer.current) clearTimeout(hitTimer.current);
+          fullyReleaseAllLocks();
           return [];
         }
         if (newThrows.length === 3) {
@@ -232,12 +227,12 @@ export default function Page01() {
 
   const retryCurrentRound = () => {
     setCurrThrows([]); setMenuOpen(false);
-    roundEnded.current = false; hitLock.current = false;
+    fullyReleaseAllLocks();
   };
   const resetGame = () => {
     setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
     setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null);
-    roundEnded.current = false; hitLock.current = false;
+    fullyReleaseAllLocks();
   };
   const goHome = () => { router.push("/"); setMenuOpen(false); };
   const endRound = () => {
