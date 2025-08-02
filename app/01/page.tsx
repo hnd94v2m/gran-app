@@ -176,14 +176,15 @@ export default function Page01() {
         let nowThrows = currThrowsRef.current;
         if (nowThrows.length >= 3) return nowThrows;
         const newThrows = [...nowThrows, hitVal];
+        // === 修正：正確取用「這輪前」最新分數 ===
+        const throwsSum = newThrows.reduce((a, b) => a + b, 0);
+        const left = scoreRef.current - throwsSum;
         if (nowThrows.length === 0) setLastValidScore(scoreRef.current);
 
-        const throwsSum = nowThrows.reduce((a, b) => a + b, 0);
-        const left = scoreRef.current - throwsSum;
         const isBust =
-          hitVal > left ||
-          left - hitVal === 1 ||
-          (left - hitVal === 0 && !isLegalFinish(segment, fatBullEnabled, moMode));
+          hitVal > (scoreRef.current - nowThrows.reduce((a, b) => a + b, 0)) ||
+          (scoreRef.current - nowThrows.reduce((a, b) => a + b, 0)) - hitVal === 1 ||
+          ((scoreRef.current - throwsSum) === 0 && !isLegalFinish(segment, fatBullEnabled, moMode));
         if (isBust) {
           setBust(true);
           setTimeout(() => setBust(false), 1200);
@@ -225,7 +226,7 @@ export default function Page01() {
   };
 
   const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
-  // 畫面主分數（左側數字滾輪顯示）＝ score - 本回合暫存已射分
+  // 「畫面主分數」＝ score - 目前 threeThrows 合計（即「這回合剩餘分」）
   let displayedCurrThrows = lastRoundThrows.length > 0 && currThrows.length === 0 ? lastRoundThrows : currThrows;
   if (bustRoundNum && (history.length + 1) === bustRoundNum + 1 && currThrows.length === 0)
     displayedCurrThrows = [];
