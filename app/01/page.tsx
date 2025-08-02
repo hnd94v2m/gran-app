@@ -83,7 +83,7 @@ function SwitchBox({ checked, onChange }: { checked: boolean; onChange: () => vo
 export default function Page01() {
   const router = useRouter();
   const [granboard, setGranboard] = useState<Granboard>();
-  const [score, setScore] = useState(START_SCORE);         // 真正「這回合之前」的分數
+  const [score, setScore] = useState(START_SCORE);
   const [history, setHistory] = useState<number[]>([]);
   const [currThrows, setCurrThrows] = useState<number[]>([]);
   const scoreRef = useRef(score);
@@ -120,6 +120,31 @@ export default function Page01() {
   function getAdjustedScore(val: number) {
     if (fatBullEnabled && (val === 25 || val === 50)) return 50;
     return val;
+  }
+
+  // ============ 修正：此回合「主畫面剩餘分」須正確顯示前一回合分數，再扣本回合已丟分 ============
+  // 正常流程：只有丟到時 (不管1/2/3標)，畫面大分數應是 上回合結束 score - 當回合已丟 sum
+  // 這裡做邏輯切換：只有未 bust、非剛結束顯示上一回合鏢時，才顯示計算後的暫時分數
+  // 若剛結束/剛 bust，立即只顯示回合結束分
+  const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
+
+  // 判斷剛回合結束，currThrows應清空，顯示 lastRoundThrows（讓三鏢分再顯示一次，美觀用）
+  const justEndedRound = lastRoundThrows.length > 0 && currThrows.length === 0 && !bust;
+  const showThrows = justEndedRound ? lastRoundThrows : currThrows;
+
+  // 畫面分數（大分）顯示機制
+  // 1. bust 狀態時（顯示 BUST，大分固定為上回合分）
+  // 2. 正常進行時，顯示「score - 本回合已丟分」
+  // 3. 剛結束時要顯示扣完後分，非201跳號
+  let currentTotal: number;
+  if (bust) {
+    currentTotal = scoreRef.current;
+  } else if (justEndedRound) {
+    currentTotal = score;
+  } else {
+    currentTotal = score - showThrows.reduce((a, b) => a + b, 0);
+    // 避免分數負值
+    if (currentTotal < 0) currentTotal = 0;
   }
 
   function endRoundWithThrows(throwsToAdd: number[]) {
@@ -174,12 +199,14 @@ export default function Page01() {
 
       setCurrThrows(prev => {
         let nowThrows = currThrowsRef.current;
+        // 最多三標
         if (nowThrows.length >= 3) return nowThrows;
         const newThrows = [...nowThrows, hitVal];
-        // === 修正：正確取用「這輪前」最新分數 ===
+        // 第一標記錄「這輪前」分
+        if (nowThrows.length === 0) setLastValidScore(scoreRef.current);
+
         const throwsSum = newThrows.reduce((a, b) => a + b, 0);
         const left = scoreRef.current - throwsSum;
-        if (nowThrows.length === 0) setLastValidScore(scoreRef.current);
 
         const isBust =
           hitVal > (scoreRef.current - nowThrows.reduce((a, b) => a + b, 0)) ||
@@ -189,7 +216,8 @@ export default function Page01() {
           setBust(true);
           setTimeout(() => setBust(false), 1200);
           setScore(lastValidScore);
-          setCurrThrows([]); setLastRoundThrows([]);
+          setCurrThrows([]);
+          setLastRoundThrows([]);
           setBustRoundNum(history.length + 1);
           roundEnded.current = false;
           hitLock.current = false;
@@ -224,13 +252,6 @@ export default function Page01() {
     if (currThrowsRef.current.length === 0) return;
     endRoundWithThrows(currThrowsRef.current);
   };
-
-  const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
-  // 「畫面主分數」＝ score - 目前 threeThrows 合計（即「這回合剩餘分」）
-  let displayedCurrThrows = lastRoundThrows.length > 0 && currThrows.length === 0 ? lastRoundThrows : currThrows;
-  if (bustRoundNum && (history.length + 1) === bustRoundNum + 1 && currThrows.length === 0)
-    displayedCurrThrows = [];
-  const currentTotal = score - displayedCurrThrows.reduce((a, b) => a + b, 0);
 
   function bgColorByIndex(idx: number, len: number): string {
     const min = 32, max = 228;
@@ -316,14 +337,14 @@ export default function Page01() {
                 width: "100%", display: "flex", justifyContent: "center",
                 alignItems: "center", minWidth: "min(100vw,1200px)"
               }}>
-                {/* 這一行顯示「主畫面」剩餘分數：score - 本回合暫存鏢數之合 */}
-                <TerminalFlipScore num={currentTotal >= 0 ? currentTotal : 0} showBust={bust} />
+                {/* 主畫面顯示分數（大分） */}
+                <TerminalFlipScore num={currentTotal} showBust={bust} />
               </div>
             </div>
             <div className="flex items-center justify-center gap-10 w-full py-8 bg-gradient-to-t from-black via-zinc-950/80">
               <span className="inline-block w-24 h-24 rounded-full bg-zinc-700 text-[4.5rem] flex items-center justify-center select-none">{avatar}</span>
               <span className="text-3xl font-bold select-none">{playerName}</span>
-              {/* 玩家名稱旁顯示 score（是這個玩家「上個回合結束後」的分數，等待扣新回合分） */}
+              {/* 玩家名稱旁顯示 score（上個回合結束之分數） */}
               <span className="ml-8 px-6 py-3 rounded bg-zinc-800 text-green-400 tracking-widest font-mono text-4xl font-black select-none">
                 {score}
               </span>
@@ -332,20 +353,20 @@ export default function Page01() {
           <div className="flex flex-col items-end justify-start flex-[1_1_0%] min-w-[150px] max-w-[330px] px-3 pb-16" style={{ marginTop: MENU_BTN_HEIGHT }}>
             <div className="flex flex-col items-end w-full gap-y-6 mb-5 mt-0">
               {[0, 1, 2].map(i => {
-                const highlight = displayedCurrThrows[i] === undefined && displayedCurrThrows.findIndex(v => v === undefined) === i;
+                const highlight = showThrows[i] === undefined && showThrows.findIndex(v => v === undefined) === i;
                 return (
                   <div key={i} className="flex flex-col items-end w-full">
                     <div style={{
                       width: threeMarkBoxWidth, height: threeMarkBoxHeight, borderRadius: 0
                     }}
                       className={`flex items-center justify-center border-2 text-5xl font-extrabold italic ${
-                        displayedCurrThrows[i] !== undefined
+                        showThrows[i] !== undefined
                           ? "border-yellow-400 text-yellow-300 bg-zinc-900"
                           : highlight
                             ? "border-green-400 text-white bg-green-800 animate-pulse"
                             : "border-zinc-600 text-zinc-500 bg-zinc-900"
                       } select-none mx-0`}>
-                      <span className="w-full text-center">{displayedCurrThrows[i] !== undefined ? displayedCurrThrows[i] : "--"}</span>
+                      <span className="w-full text-center">{showThrows[i] !== undefined ? showThrows[i] : "--"}</span>
                     </div>
                   </div>
                 );
