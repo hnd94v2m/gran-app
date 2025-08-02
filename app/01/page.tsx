@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Granboard } from "@/services/granboard";
 import { Segment, SegmentType } from "@/services/boardinfo";
@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID: number = 84; // 你的紅色按鈕ID
+const RED_BUTTON_SEGMENT_ID: number = 84;
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -84,8 +84,12 @@ export default function Page01() {
   const router = useRouter();
   const [granboard, setGranboard] = useState<Granboard>();
   const [score, setScore] = useState(START_SCORE);
+  const scoreRef = useRef(score);
+
   const [history, setHistory] = useState<number[]>([]);
   const [currThrows, setCurrThrows] = useState<number[]>([]);
+  const currThrowsRef = useRef(currThrows);
+
   const [lastRoundThrows, setLastRoundThrows] = useState<number[]>([]);
   const [lastValidScore, setLastValidScore] = useState(START_SCORE);
   const [bust, setBust] = useState(false);
@@ -93,6 +97,10 @@ export default function Page01() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [fatBullEnabled, setFatBullEnabled] = useState(true);
   const [moMode, setMoMode] = useState(true);
+
+  // 關鍵：用 ref 保證 callback 所拿 always 最新
+  useEffect(() => { scoreRef.current = score; }, [score]);
+  useEffect(() => { currThrowsRef.current = currThrows; }, [currThrows]);
 
   const hitLock = useRef(false);
   const roundEnded = useRef(false);
@@ -116,25 +124,29 @@ export default function Page01() {
     if (fatBullEnabled && (val === 25 || val === 50)) return 50;
     return val;
   }
+
   function endRoundWithThrows(throwsToAdd: number[]) {
     const sum = throwsToAdd.reduce((a, b) => a + b, 0);
     setHistory(prev => [...prev, sum]);
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
     setScore(prevScore => prevScore - sum);
-    // 關鍵：立即釋放 roundEnded、hitLock，讓下回合立刻可丟分
+    // 關鍵：立即釋放
     roundEnded.current = false;
     hitLock.current = false;
     if (hitTimer.current) clearTimeout(hitTimer.current);
   }
 
-  useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
+  useEffect(() => {
+    if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight;
+  }, [history]);
   useEffect(() => { handleConnect(); }, []);
   const handleConnect = async () => {
     try { const gb = await Granboard.ConnectToBoard(); setGranboard(gb); }
     catch { }
   };
 
+  // 這裡的 segmentHitCallback 完全只用 ref 拿到最新狀態
   useEffect(() => {
     if (!granboard) return;
     granboard.segmentHitCallback = (segment: Segment) => {
@@ -142,30 +154,29 @@ export default function Page01() {
       if (roundEnded.current) return;
 
       if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
-        // 強制收回合：currThrows.length>0才結算，不論幾鏢。
-        if (currThrows.length > 0) {
-          endRoundWithThrows(currThrows);
+        if (currThrowsRef.current.length > 0) {
+          endRoundWithThrows(currThrowsRef.current);
         }
-        // 讓按下紅色按鈕後，回合/打鎖立即釋放，不影響下次丟鏢。
         roundEnded.current = false;
         hitLock.current = false;
         if (hitTimer.current) clearTimeout(hitTimer.current);
         return;
       }
 
-      // 其它區塊擊中
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
       hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600);
 
       const hitVal = getAdjustedScore(segment.Value);
 
+      // 純用 ref 拿目前鏢，setCurrThrows 不依賴 closure
       setCurrThrows(prev => {
-        if (prev.length >= 3) return prev;
-        const newThrows = [...prev, hitVal];
-        if (prev.length === 0) setLastValidScore(score);
-        const throwsSum = prev.reduce((a, b) => a + b, 0);
-        const left = score - throwsSum;
+        let nowThrows = currThrowsRef.current;
+        if (nowThrows.length >= 3) return nowThrows;
+        const newThrows = [...nowThrows, hitVal];
+        if (nowThrows.length === 0) setLastValidScore(scoreRef.current);
+        const throwsSum = nowThrows.reduce((a, b) => a + b, 0);
+        const left = scoreRef.current - throwsSum;
         const isBust = (
           hitVal > left ||
           (left - hitVal === 1) ||
@@ -193,9 +204,13 @@ export default function Page01() {
       granboard.segmentHitCallback = undefined;
       if (hitTimer.current) clearTimeout(hitTimer.current);
     };
-  }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history, currThrows]);
+    // eslint-disable-next-line
+  }, [granboard, fatBullEnabled, moMode, lastValidScore, history]); // 不要相依 currThrows/score
 
-  const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; hitLock.current = false; };
+  const retryCurrentRound = () => {
+    setCurrThrows([]); setMenuOpen(false);
+    roundEnded.current = false; hitLock.current = false;
+  };
   const resetGame = () => {
     setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
     setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null);
@@ -203,8 +218,8 @@ export default function Page01() {
   };
   const goHome = () => { router.push("/"); setMenuOpen(false); };
   const endRound = () => {
-    if (currThrows.length === 0) return;
-    endRoundWithThrows(currThrows);
+    if (currThrowsRef.current.length === 0) return;
+    endRoundWithThrows(currThrowsRef.current);
   };
 
   const visibleHistory = history.slice(-MAX_HISTORY_ROWS);
