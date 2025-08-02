@@ -7,7 +7,7 @@ import { Segment, SegmentType } from "@/services/boardinfo";
 const START_SCORE = 501;
 const MAX_HISTORY_ROWS = 8;
 const MENU_BTN_HEIGHT = 64;
-const RED_BUTTON_SEGMENT_ID: number = 84; // 根據你的 Granboard LOG
+const RED_BUTTON_SEGMENT_ID: number = 84; // 你的紅色按鈕ID
 
 function TerminalFlipDigit({ digit }: { digit: string }) {
   const [current, setCurrent] = useState("0");
@@ -122,8 +122,10 @@ export default function Page01() {
     setLastRoundThrows(throwsToAdd);
     setCurrThrows([]);
     setScore(prevScore => prevScore - sum);
-    roundEnded.current = true;
-    setTimeout(() => { roundEnded.current = false; }, 500);
+    // 關鍵：立即釋放 roundEnded、hitLock，讓下回合立刻可丟分
+    roundEnded.current = false;
+    hitLock.current = false;
+    if (hitTimer.current) clearTimeout(hitTimer.current);
   }
 
   useEffect(() => { if (historyBox.current) historyBox.current.scrollTop = historyBox.current.scrollHeight; }, [history]);
@@ -138,17 +140,26 @@ export default function Page01() {
     granboard.segmentHitCallback = (segment: Segment) => {
       if (hitLock.current) return;
       if (roundEnded.current) return;
+
       if (Number(segment.ID) === RED_BUTTON_SEGMENT_ID) {
+        // 強制收回合：currThrows.length>0才結算，不論幾鏢。
         if (currThrows.length > 0) {
-          roundEnded.current = true;
           endRoundWithThrows(currThrows);
         }
+        // 讓按下紅色按鈕後，回合/打鎖立即釋放，不影響下次丟鏢。
+        roundEnded.current = false;
+        hitLock.current = false;
+        if (hitTimer.current) clearTimeout(hitTimer.current);
         return;
       }
+
+      // 其它區塊擊中
       hitLock.current = true;
       if (hitTimer.current) clearTimeout(hitTimer.current);
       hitTimer.current = setTimeout(() => { hitLock.current = false; }, 600);
+
       const hitVal = getAdjustedScore(segment.Value);
+
       setCurrThrows(prev => {
         if (prev.length >= 3) return prev;
         const newThrows = [...prev, hitVal];
@@ -167,10 +178,11 @@ export default function Page01() {
           setCurrThrows([]); setLastRoundThrows([]);
           setBustRoundNum(history.length + 1);
           roundEnded.current = false;
+          hitLock.current = false;
+          if (hitTimer.current) clearTimeout(hitTimer.current);
           return [];
         }
         if (newThrows.length === 3) {
-          roundEnded.current = true;
           endRoundWithThrows(newThrows);
           return [];
         }
@@ -183,15 +195,15 @@ export default function Page01() {
     };
   }, [granboard, fatBullEnabled, moMode, score, lastValidScore, history, currThrows]);
 
-  const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; };
+  const retryCurrentRound = () => { setCurrThrows([]); setMenuOpen(false); roundEnded.current = false; hitLock.current = false; };
   const resetGame = () => {
     setScore(START_SCORE); setHistory([]); setCurrThrows([]); setLastRoundThrows([]);
-    setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null); roundEnded.current = false;
+    setMenuOpen(false); setBust(false); setLastValidScore(START_SCORE); setBustRoundNum(null);
+    roundEnded.current = false; hitLock.current = false;
   };
   const goHome = () => { router.push("/"); setMenuOpen(false); };
   const endRound = () => {
     if (currThrows.length === 0) return;
-    roundEnded.current = true;
     endRoundWithThrows(currThrows);
   };
 
